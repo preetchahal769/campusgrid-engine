@@ -1,0 +1,266 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  MANAGEMENT
+  PRINCIPAL
+  TEACHER
+  STUDENT
+  STAFF
+  PARENT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LEAVE
+  HOLIDAY
+}
+
+model assigment {
+  id          String    @id @default(cuid())
+  title       String?   @db.Text
+  description String?   @db.Text
+  dueDate     DateTime? @db.Date
+  maxMarks    Int?
+  expireAt    DateTime? @db.Date
+  subject_id  String
+  teachers_id String
+  section_id  String
+
+  subject    subject      @relation(fields: [subject_id], references: [id])
+  teachers   teachers     @relation(fields: [teachers_id], references: [id])
+  section    section      @relation(fields: [section_id], references: [id])
+  submission submission[]
+}
+
+model attachment {
+  id           String  @id @default(cuid())
+  fileurl      String? @db.Text
+  filetype     String? @db.Text
+  filename     String? @db.Text
+  broadcast_id String
+
+  broadcast broadcast @relation(fields: [broadcast_id], references: [id])
+}
+
+model broadcast {
+  id         String  @id @default(cuid())
+  title      String? @db.VarChar
+  message    String? @db.VarChar
+  targetrole String? @db.VarChar
+  author_id  String
+
+  author      users        @relation(fields: [author_id], references: [id])
+  attachments attachment[]
+}
+
+model grade {
+  id        String  @id @default(cuid())
+  name      String?
+  School_id String
+
+  School  School    @relation(fields: [School_id], references: [id])
+  section section[]
+}
+
+model principal {
+  id            String    @id @default(cuid())
+  qualification String?   @db.VarChar
+  experinceYear Int?
+  joiningDate   DateTime? @db.Date
+  signatureUrl  String?   @db.VarChar
+  School_id     String
+  users_id      String
+
+  users users @relation(fields: [users_id], references: [id])
+}
+
+model School {
+  id              String  @id @default(cuid())
+  name            String? @db.VarChar
+  rankingPoint    Int?
+  city            String? @db.VarChar
+  pincode         Int?
+  education_board String? @map("education board") @db.VarChar
+
+  users       users[]
+  grade       grade[]
+  parent      parent[]
+  studioRooms studioRooms[]
+  subject     subject[]
+  attendance  attendance[]
+}
+
+model section {
+  id       String  @id @default(cuid())
+  name     String?
+  grade_id String
+
+  grade                 grade                   @relation(fields: [grade_id], references: [id])
+  assigment             assigment[]
+  students              students[]
+  teachersubjectsection teachersubjectsection[]
+}
+
+model staff {
+  id             String    @id @default(cuid())
+  department     String?   @db.VarChar
+  joiningDate    DateTime? @db.Date
+  Experince      String?
+  monthly_salary Int?      @map("monthly salary")
+  licenseNumber  Int?
+  assignedArea   String?   @db.VarChar
+  users_id       String
+  School_id      String
+
+  users users @relation(fields: [users_id], references: [id])
+}
+
+model students {
+  id               String    @id @default(cuid())
+  admissionNumber  String?   @db.VarChar
+  rollNumber       Int?
+  dateOfBirth      DateTime? @db.Date
+  bloodGroup       String?   @db.VarChar
+  fatherName       String?   @db.VarChar
+  motherName       String?   @db.VarChar
+  emergencyContact String?   @db.VarChar
+  rankingPoints    Int?
+  users_id         String
+  School_id        String
+  section_id       String
+
+  users      users        @relation(fields: [users_id], references: [id])
+  section    section      @relation(fields: [section_id], references: [id])
+  submission submission[]
+  parent     parent[]
+}
+
+model studioRoomBooking {
+  id             String    @id @default(cuid())
+  title          String?   @db.Text
+  starttime      DateTime? @db.Date
+  endTime        DateTime? @db.Date
+  teachers_id    String
+  studioRooms_id String
+  School_id      String
+
+  teachers    teachers    @relation(fields: [teachers_id], references: [id])
+  studioRooms studioRooms @relation(fields: [studioRooms_id], references: [id])
+}
+
+model studioRooms {
+  id         String  @id @default(cuid())
+  roomName   String?
+  status     Int?
+  hardwareIp Int?
+  School_id  String
+
+  School            School              @relation(fields: [School_id], references: [id])
+  studioRoomBooking studioRoomBooking[]
+}
+
+model subject {
+  id        String  @id @default(cuid())
+  name      String? @map("name ") @db.VarChar
+  type      String? @db.VarChar
+  code      String? @db.VarChar
+  School_id String
+
+  School                School                  @relation(fields: [School_id], references: [id])
+  assigment             assigment[]
+  teachersubjectsection teachersubjectsection[]
+}
+
+model submission {
+  id            String    @id @default(cuid())
+  content       String?   @db.Text
+  fileUrl       String?   @db.Text
+  status        String?   @db.Text
+  obatinedmarks String?   @db.Text
+  submittedAt   DateTime? @db.Date
+  assigment_id  String
+  students_id   String
+
+  assigment assigment @relation(fields: [assigment_id], references: [id])
+  students  students  @relation(fields: [students_id], references: [id])
+}
+
+model teachers {
+  id            String    @id @default(cuid())
+  qualification String?   @db.VarChar
+  specilization String?   @db.VarChar
+  joiningDate   DateTime? @db.Date
+  Experince     String?
+  monthlySalary Int?
+  users_id      String
+  School_id     String
+
+  users                 users                   @relation(fields: [users_id], references: [id])
+  assigment             assigment[]
+  studioRoomBooking     studioRoomBooking[]
+  teachersubjectsection teachersubjectsection[]
+}
+
+model teachersubjectsection {
+  id          String @id @default(cuid())
+  teachers_id String
+  subject_id  String
+  section_id  String
+
+  teachers teachers @relation(fields: [teachers_id], references: [id])
+  subject  subject  @relation(fields: [subject_id], references: [id])
+  section  section  @relation(fields: [section_id], references: [id])
+}
+
+model parent {
+  id          String   @id @default(cuid())
+  users_id    String
+  School_id   String
+  students_id String
+
+  users       users    @relation(fields: [users_id], references: [id])
+  School      School   @relation(fields: [School_id], references: [id])
+  students    students @relation(fields: [students_id], references: [id])
+}
+
+model users {
+  id        String  @id @default(cuid())
+  name      String? @db.VarChar
+  email     String? @unique @db.VarChar
+  password  String? @db.VarChar
+  phoneNo   String? @db.VarChar
+  role      UserRole @default(STUDENT)
+  School_id String?
+
+  School    School?     @relation(fields: [School_id], references: [id])
+  broadcast broadcast[]
+
+  principal principal[]
+  teachers  teachers[]
+  students  students[]
+  staff     staff[]
+  parent    parent[]
+  attendance attendance[]
+}
+
+model attendance {
+  id        String           @id @default(cuid())
+  date      DateTime         @db.Date
+  status    AttendanceStatus
+  users_id  String
+  School_id String
+
+  users     users            @relation(fields: [users_id], references: [id])
+  School    School           @relation(fields: [School_id], references: [id])
+
+  @@unique([users_id, date])
+}
