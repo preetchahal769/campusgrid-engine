@@ -87,7 +87,10 @@ export class BroadcastsService {
         throw new ForbiddenException('User must belong to a school to fetch broadcasts.');
       }
       whereClause.author = {
-        School_id: currentUser.School_id
+        OR: [
+          { School_id: currentUser.School_id },
+          { School_id: null }
+        ]
       };
     }
 

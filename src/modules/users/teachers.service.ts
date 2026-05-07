@@ -47,7 +47,7 @@ export class TeachersService {
   }
 
   async assignSubjectAndSection(assignTeacherDto: AssignTeacherDto, currentUser: any) {
-    const { teachers_id, subject_id, section_id } = assignTeacherDto;
+    const { teachers_id, subject_id, section_id, lectureNo, dayOfWeek } = assignTeacherDto;
 
     // Fetch the teacher profile
     const teacher = await this.prisma.teachers.findUnique({
@@ -80,17 +80,29 @@ export class TeachersService {
       }
     }
 
-    // Check if the exact assignment already exists
-    const existingAssignment = await this.prisma.teachersubjectsection.findFirst({
+    // Timetable Conflict Check:
+    // 1. Is this specific teacher already busy during this lecture?
+    const teacherBusy = await this.prisma.teachersubjectsection.findFirst({
       where: {
         teachers_id,
-        subject_id,
-        section_id,
+        dayOfWeek,
+        lectureNo,
       },
     });
+    if (teacherBusy) {
+      throw new ConflictException('Teacher is already assigned to another lecture at this time.');
+    }
 
-    if (existingAssignment) {
-      throw new ConflictException('Teacher is already assigned to this subject and section.');
+    // 2. Is this specific section already having a lecture at this time?
+    const sectionOccupied = await this.prisma.teachersubjectsection.findFirst({
+      where: {
+        section_id,
+        dayOfWeek,
+        lectureNo,
+      },
+    });
+    if (sectionOccupied) {
+      throw new ConflictException('This section already has a lecture assigned at this time.');
     }
 
     return this.prisma.teachersubjectsection.create({
@@ -98,6 +110,8 @@ export class TeachersService {
         teachers_id,
         subject_id,
         section_id,
+        lectureNo,
+        dayOfWeek,
       },
     });
   }

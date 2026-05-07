@@ -38,43 +38,51 @@ export class StudentsService {
       throw new ForbiddenException('Section does not belong to your school.');
     }
 
-    // Check if student profile already exists
-    const existingProfile = await this.prisma.students.findFirst({
-      where: { users_id },
+    // Check if an ACTIVE student profile already exists
+    const existingActiveProfile = await this.prisma.students.findFirst({
+      where: { users_id, status: 'ACTIVE' },
     });
 
-    if (existingProfile) {
-      // Update existing profile (move section)
-      return this.prisma.students.update({
-        where: { id: existingProfile.id },
-        data: {
-          section_id,
-          School_id: targetSchoolId as string,
-          ...rest,
-          dateOfBirth: rest.dateOfBirth ? new Date(rest.dateOfBirth) : undefined,
-        },
-      });
+    if (existingActiveProfile) {
+      // If moving to a DIFFERENT school, mark the old one as TRANSFERRED
+      if (existingActiveProfile.School_id !== targetSchoolId) {
+        await this.prisma.students.update({
+          where: { id: existingActiveProfile.id },
+          data: { 
+            status: 'TRANSFERRED',
+            transferredAt: new Date()
+          },
+        });
+        // Proceed to create a NEW profile below
+      } else {
+        // Just moving sections in the SAME school: Update existing
+        return this.prisma.students.update({
+          where: { id: existingActiveProfile.id },
+          data: {
+            section_id,
+            ...rest,
+            dateOfBirth: rest.dateOfBirth ? new Date(rest.dateOfBirth) : undefined,
+          },
+        });
+      }
     }
 
-    // Create new student profile
+    // Create new active student profile
     return this.prisma.students.create({
       data: {
         users_id,
         section_id,
         School_id: targetSchoolId as string,
-        admissionNumber: rest.admissionNumber,
-        rollNumber: rest.rollNumber,
-        bloodGroup: rest.bloodGroup,
-        fatherName: rest.fatherName,
-        motherName: rest.motherName,
-        emergencyContact: rest.emergencyContact,
+        status: 'ACTIVE',
+        enrolledAt: new Date(),
+        ...rest,
         dateOfBirth: rest.dateOfBirth ? new Date(rest.dateOfBirth) : undefined,
       },
     });
   }
 
   async findAll(currentUser: any) {
-    const whereClause: any = {};
+    const whereClause: any = { status: 'ACTIVE' };
     if (currentUser.role !== UserRole.SUPER_ADMIN) {
       if (!currentUser.School_id) {
         throw new ForbiddenException('You must be associated with a school to view students.');
@@ -85,7 +93,7 @@ export class StudentsService {
     return this.prisma.students.findMany({
       where: whereClause,
       include: {
-        users: { select: { name: true, email: true, phoneNo: true } },
+        users: { select: { name: true, email: true, phoneNo: true, globalRating: true, globalRank: true } },
         section: {
           include: { grade: true }
         }
@@ -95,9 +103,9 @@ export class StudentsService {
 
   async findMyProfile(currentUser: any) {
     const profile = await this.prisma.students.findFirst({
-      where: { users_id: currentUser.userId },
+      where: { users_id: currentUser.id, status: 'ACTIVE' },
       include: {
-        users: { select: { name: true, email: true, phoneNo: true } },
+        users: { select: { name: true, email: true, phoneNo: true, globalRating: true, globalRank: true } },
         section: {
           include: { grade: true }
         }
@@ -105,7 +113,7 @@ export class StudentsService {
     });
 
     if (!profile) {
-      throw new NotFoundException('Student profile not found.');
+      throw new NotFoundException('Active student profile not found.');
     }
 
     return profile;

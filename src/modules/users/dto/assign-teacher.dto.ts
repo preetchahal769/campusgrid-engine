@@ -12,4 +12,11 @@ export class AssignTeacherDto {
   @IsNotEmpty()
   @IsString()
   section_id: string;
+
+  @IsNotEmpty()
+  lectureNo: number;
+
+  @IsNotEmpty()
+  @IsString()
+  dayOfWeek: string;
 }

@@ -40,4 +40,12 @@ export class CreateStudentProfileDto {
   @IsOptional()
   @IsString()
   emergencyContact?: string;
+
+  @IsOptional()
+  @IsInt()
+  monthly_fee?: number;
+
+  @IsOptional()
+  @IsInt()
+  discount_percentage?: number;
 }

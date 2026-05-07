@@ -15,6 +15,7 @@ import { AttendanceModule } from './modules/attendance/attendance.module';
 import { StudiosModule } from './modules/studios/studios.module';
 import { BroadcastModule } from './modules/communications/broadcast.module';
 import { BillingModule } from './modules/finance/billing.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { BillingModule } from './modules/finance/billing.module';
     StudiosModule,
     BroadcastModule,
     BillingModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [
