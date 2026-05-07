@@ -76,16 +76,19 @@ model School {
   studioRooms     studioRooms[]
   subject         subject[]
   users           users[]
+  leaveRequest    leaveRequest[]
 }
 
 model section {
   id                    String                  @id @default(cuid())
   name                  String?
   grade_id              String
+  classInchargeId       String?                 @unique
   assigment             assigment[]
   grade                 grade                   @relation(fields: [grade_id], references: [id])
   students              students[]
   teachersubjectsection teachersubjectsection[]
+  classIncharge         teachers?               @relation("ClassIncharge", fields: [classInchargeId], references: [id])
 }
 
 model staff {
@@ -123,6 +126,7 @@ model students {
   section             section      @relation(fields: [section_id], references: [id])
   users               users        @relation(fields: [users_id], references: [id])
   submission          submission[]
+  leaveRequest        leaveRequest[]
 }
 
 model studioRoomBooking {
@@ -181,21 +185,33 @@ model teachers {
   users_id              String
   School_id             String
   assigment             assigment[]
+  inchargeOf            section?                @relation("ClassIncharge")
   studioRoomBooking     studioRoomBooking[]
   users                 users                   @relation(fields: [users_id], references: [id])
   teachersubjectsection teachersubjectsection[]
 }
 
 model teachersubjectsection {
-  id          String   @id @default(cuid())
+  id          String      @id @default(cuid())
   teachers_id String
   subject_id  String
   section_id  String
-  lectureNo   Int      @default(1)
-  dayOfWeek   String   @default("Monday")
-  section     section  @relation(fields: [section_id], references: [id])
-  subject     subject  @relation(fields: [subject_id], references: [id])
-  teachers    teachers @relation(fields: [teachers_id], references: [id])
+  section     section     @relation(fields: [section_id], references: [id])
+  subject     subject     @relation(fields: [subject_id], references: [id])
+  teachers    teachers    @relation(fields: [teachers_id], references: [id])
+  timetable   timetable[]
+}
+
+model timetable {
+  id                        String                @id @default(cuid())
+  dayOfWeek                 String
+  lectureNo                 Int
+  startTime                 String?
+  endTime                   String?
+  teachersubjectsection_id  String
+  teachersubjectsection     teachersubjectsection @relation(fields: [teachersubjectsection_id], references: [id])
+
+  @@unique([dayOfWeek, lectureNo, teachersubjectsection_id])
 }
 
 model parent {
@@ -225,6 +241,7 @@ model users {
   staff        staff[]
   students     students[]
   teachers     teachers[]
+  leaveApproved leaveRequest[] @relation("ApprovedLeaves")
   School       School?      @relation(fields: [School_id], references: [id])
 }
 
@@ -238,6 +255,30 @@ model attendance {
   users     users            @relation(fields: [users_id], references: [id])
 
   @@unique([users_id, date])
+}
+
+model leaveRequest {
+  id            String      @id @default(cuid())
+  startDate     DateTime    @db.Date
+  endDate       DateTime    @db.Date
+  reason        String?
+  attachmentUrl String?
+  status        LeaveStatus @default(PENDING)
+  studentId     String
+  approvedById  String?
+  School_id     String
+  createdAt     DateTime    @default(now())
+  
+  student       students    @relation(fields: [studentId], references: [id])
+  approvedBy    users?      @relation("ApprovedLeaves", fields: [approvedById], references: [id])
+  School        School      @relation(fields: [School_id], references: [id])
+}
+
+enum LeaveStatus {
+  PENDING
+  ESCALATED
+  APPROVED
+  REJECTED
 }
 
 enum UserRole {

@@ -3,12 +3,14 @@ import { AssignmentsService } from './assignments.service';
 import { GradesService } from './grades.service';
 import { SectionsService } from './sections.service';
 import { SubjectsService } from './subjects.service';
+import { TimetableService } from './timetable.service';
+import { LeavesService } from './leaves.service';
 import { AcademicsController } from './academics.controller';
 import { PrismaModule } from '../../database/prisma.module';
 
 @Module({
   imports: [PrismaModule],
   controllers: [AcademicsController],
-  providers: [AssignmentsService, GradesService, SectionsService, SubjectsService]
+  providers: [AssignmentsService, GradesService, SectionsService, SubjectsService, TimetableService, LeavesService]
 })
 export class AcademicsModule {}

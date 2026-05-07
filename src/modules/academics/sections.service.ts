@@ -41,4 +41,31 @@ export class SectionsService {
       },
     });
   }
+
+  async assignIncharge(sectionId: string, teacherId: string, currentUser: any) {
+    // 1. Fetch section and teacher to verify existence
+    const section = await this.prisma.section.findUnique({
+      where: { id: sectionId },
+      include: { grade: true }
+    });
+    if (!section) throw new NotFoundException('Section not found.');
+
+    const teacher = await this.prisma.teachers.findUnique({
+      where: { id: teacherId }
+    });
+    if (!teacher) throw new NotFoundException('Teacher not found.');
+
+    // 2. Enforce school boundaries
+    if (currentUser.role !== UserRole.SUPER_ADMIN) {
+      if (section.grade.School_id !== currentUser.School_id || teacher.School_id !== currentUser.School_id) {
+        throw new ForbiddenException('Section or Teacher belongs to a different school.');
+      }
+    }
+
+    // 3. Update the section with the class incharge
+    return this.prisma.section.update({
+      where: { id: sectionId },
+      data: { classInchargeId: teacherId }
+    });
+  }
 }
