@@ -116,7 +116,21 @@ export class StudentsService {
       throw new NotFoundException('Active student profile not found.');
     }
 
-    return profile;
+    // Fetch today's attendance status
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayAttendance = await this.prisma.attendance.findFirst({
+      where: {
+        users_id: currentUser.id,
+        date: today
+      }
+    });
+
+    return {
+      ...profile,
+      todayAttendance: todayAttendance?.status || 'NOT_MARKED'
+    };
   }
 
   async updateProfile(id: string, updateDto: UpdateStudentProfileDto, currentUser: any) {

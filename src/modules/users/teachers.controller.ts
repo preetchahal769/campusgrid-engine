@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
 import { TeachersService } from './teachers.service';
 import { CreateTeacherProfileDto } from './dto/create-teacher-profile.dto';
 import { AssignTeacherDto } from './dto/assign-teacher.dto';
@@ -22,5 +22,11 @@ export class TeachersController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL)
   assignSubjectAndSection(@Body() assignTeacherDto: AssignTeacherDto, @Request() req: any) {
     return this.teachersService.assignSubjectAndSection(assignTeacherDto, req.user);
+  }
+
+  @Get('me')
+  @Roles(UserRole.TEACHER)
+  fetchMyProfile(@Request() req: any) {
+    return this.teachersService.findMyProfile(req.user);
   }
 }

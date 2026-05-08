@@ -101,4 +101,25 @@ export class TeachersService {
       },
     });
   }
+
+  async findMyProfile(currentUser: any) {
+    const profile = await this.prisma.teachers.findFirst({
+      where: { users_id: currentUser.id },
+      include: {
+        users: { select: { name: true, email: true, phoneNo: true } },
+        teachersubjectsection: {
+          include: {
+            subject: { select: { name: true, code: true } },
+            section: { include: { grade: true } }
+          }
+        }
+      }
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Teacher profile not found.');
+    }
+
+    return profile;
+  }
 }

@@ -137,4 +137,21 @@ export class UsersService {
       },
     });
   }
+
+  async updateProfile(userId: string, updateDto: any) {
+    return this.prisma.users.update({
+      where: { id: userId },
+      data: {
+        name: updateDto.name,
+        phoneNo: updateDto.phoneNo,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phoneNo: true,
+        role: true,
+      },
+    });
+  }
 }

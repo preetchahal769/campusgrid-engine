@@ -148,6 +148,39 @@ export class AssignmentsService {
     });
   }
 
+  async getAllowedContexts(currentUser: any) {
+    if (currentUser.role !== UserRole.TEACHER) {
+      throw new ForbiddenException('Only teachers can access allowed assignment contexts.');
+    }
+
+    const teacherProfile = await this.prisma.teachers.findFirst({
+      where: { users_id: currentUser.id }
+    });
+
+    if (!teacherProfile) {
+      throw new ForbiddenException('Teacher profile not found.');
+    }
+
+    return this.prisma.teachersubjectsection.findMany({
+      where: { teachers_id: teacherProfile.id },
+      select: {
+        id: true,
+        subject: {
+          select: { id: true, name: true, code: true }
+        },
+        section: {
+          select: {
+            id: true,
+            name: true,
+            grade: {
+              select: { id: true, name: true }
+            }
+          }
+        }
+      }
+    });
+  }
+
   async submit(assignmentId: string, submissionDto: { content?: string, fileUrl?: string }, currentUser: any) {
     if (currentUser.role !== UserRole.STUDENT) {
       throw new ForbiddenException('Only students can submit assignments.');

@@ -105,4 +105,25 @@ export class BroadcastsService {
       orderBy: { id: 'desc' }
     });
   }
+
+  getTargetRoles(currentUser: any) {
+    const allRoles = [
+      { label: 'Principal', value: UserRole.PRINCIPAL },
+      { label: 'Teacher', value: UserRole.TEACHER },
+      { label: 'Admin', value: UserRole.ADMIN },
+      { label: 'Student', value: UserRole.STUDENT },
+      { label: 'Parent', value: UserRole.PARENT },
+      { label: 'Staff', value: UserRole.STAFF },
+      { label: 'Management', value: UserRole.MANAGEMENT },
+    ];
+
+    if (currentUser.role === UserRole.TEACHER) {
+      return allRoles.filter(role => 
+        [UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.ADMIN, UserRole.STUDENT, UserRole.PARENT].includes(role.value)
+      );
+    }
+
+    // For Admin/Principal/Super Admin, return all except Super Admin
+    return allRoles;
+  }
 }

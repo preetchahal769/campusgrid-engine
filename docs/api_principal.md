@@ -2,6 +2,22 @@
 
 This guide provides full details for building the high-level School Management Dashboard.
 
+## 🔐 Authentication & Session
+All requests require the `access_token` cookie for authentication.
+
+### 0. Login (Public)
+- **Method**: `POST`
+- **URL**: `/auth/login`
+- **Body**: `{ "email": "...", "password": "..." }`
+- **Response**: Returns the JWT token and user details. Sets `access_token` cookie.
+
+---
+
+## 💡 Pro-Tip for Frontend
+> [!TIP]
+> All **POST** (Create) requests in this API return the **Complete Created Object**. 
+> Always use the returned `id` if you need to perform immediate follow-up actions.
+
 ---
 
 ## 🏗️ School Setup (Academic Structure)
@@ -86,19 +102,20 @@ Define which teacher manages a section (for leaves/attendance).
 
 ## 🗓️ Scheduling
 
-### 7. Create Timetable Slot
-- **Method**: `POST`
-- **URL**: `/academics/timetable`
-- **Request Body**:
+### Create Timetable (Single or Bulk)
+Assign a teacher to a specific day and time. You can pass one or many slots in a single call.
+*   **Method**: `POST`
+*   **URL**: `/academics/timetable`
+*   **Body**:
 ```json
 {
-  "dayOfWeek": "Monday",
-  "lectureNo": 2,
-  "startTime": "09:30 AM",
-  "endTime": "10:30 AM",
-  "teachersubjectsection_id": "tss_id_from_assignment_step"
+  "slots": [
+    { "dayOfWeek": "Monday", "lectureNo": 1, "startTime": "08:00 AM", "endTime": "09:00 AM", "teachersubjectsection_id": "TSS_ID" },
+    { "dayOfWeek": "Tuesday", "lectureNo": 1, "startTime": "08:00 AM", "endTime": "09:00 AM", "teachersubjectsection_id": "TSS_ID" }
+  ]
 }
 ```
+*Note: If any slot in the array has a conflict, the entire request will fail.*
 
 ---
 

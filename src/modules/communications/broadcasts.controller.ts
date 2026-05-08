@@ -21,4 +21,9 @@ export class BroadcastsController {
   fetchForUser(@Request() req: any) {
     return this.broadcastsService.fetchForUser(req.user);
   }
+
+  @Get('target-roles')
+  getTargetRoles(@Request() req: any) {
+    return this.broadcastsService.getTargetRoles(req.user);
+  }
 }

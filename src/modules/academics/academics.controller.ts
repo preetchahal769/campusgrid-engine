@@ -10,6 +10,7 @@ import { CreateSectionDto } from './dto/create-section.dto';
 import { CreateSubjectDto } from './dto/create-subject.dto';
 import { CreateAssignmentDto } from './dto/create-assignment.dto';
 import { CreateTimetableDto } from './dto/create-timetable.dto';
+import { CreateBulkTimetableDto } from './dto/create-bulk-timetable.dto';
 import { CreateLeaveRequestDto, UpdateLeaveStatusDto } from './dto/leave-request.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -57,6 +58,12 @@ export class AcademicsController {
     return this.assignmentsService.fetchForUser(req.user);
   }
 
+  @Get('assignments/allowed-contexts')
+  @Roles(UserRole.TEACHER)
+  getAllowedContexts(@Request() req: any) {
+    return this.assignmentsService.getAllowedContexts(req.user);
+  }
+
   @Post('assignments/:id/submit')
   @Roles(UserRole.STUDENT)
   submitAssignment(@Param('id') id: string, @Body() submissionDto: { content?: string, fileUrl?: string }, @Request() req: any) {
@@ -71,8 +78,8 @@ export class AcademicsController {
 
   @Post('timetable')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL)
-  createTimetable(@Body() createTimetableDto: CreateTimetableDto, @Request() req: any) {
-    return this.timetableService.create(createTimetableDto, req.user);
+  createTimetable(@Body() body: CreateBulkTimetableDto, @Request() req: any) {
+    return this.timetableService.createBulk(body, req.user);
   }
 
   @Get('timetable/section/:sectionId')

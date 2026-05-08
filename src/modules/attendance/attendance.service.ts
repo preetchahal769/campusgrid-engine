@@ -92,4 +92,24 @@ export class AttendanceService {
       orderBy: { date: 'desc' }
     });
   }
+
+  async fetchMyAttendance(currentUser: any, month?: number, year?: number) {
+    const whereClause: any = {
+      users_id: currentUser.id
+    };
+
+    if (month && year) {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0); // Last day of month
+      whereClause.date = {
+        gte: startDate,
+        lte: endDate
+      };
+    }
+
+    return this.prisma.attendance.findMany({
+      where: whereClause,
+      orderBy: { date: 'asc' }
+    });
+  }
 }

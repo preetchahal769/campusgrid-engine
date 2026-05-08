@@ -26,4 +26,18 @@ export class AttendanceController {
   ) {
     return this.attendanceService.fetchAttendance(date, users_id, req.user);
   }
+
+  @Get('me')
+  @Roles(UserRole.STUDENT, UserRole.TEACHER, UserRole.PARENT, UserRole.PRINCIPAL)
+  fetchMyAttendance(
+    @Query('month') month: string,
+    @Query('year') year: string,
+    @Request() req: any
+  ) {
+    return this.attendanceService.fetchMyAttendance(
+      req.user, 
+      month ? parseInt(month) : undefined, 
+      year ? parseInt(year) : undefined
+    );
+  }
 }
