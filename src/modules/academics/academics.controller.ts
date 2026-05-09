@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch, UseInterceptors, UploadedFiles } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch, UseInterceptors, UploadedFiles, Query } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { GradesService } from './grades.service';
 import { SectionsService } from './sections.service';
@@ -6,6 +6,7 @@ import { SubjectsService } from './subjects.service';
 import { AssignmentsService } from './assignments.service';
 import { TimetableService } from './timetable.service';
 import { LeavesService } from './leaves.service';
+import { SubstitutionsService } from './substitutions.service';
 import { CreateGradeDto } from './dto/create-grade.dto';
 import { CreateSectionDto } from './dto/create-section.dto';
 import { CreateSubjectDto } from './dto/create-subject.dto';
@@ -28,6 +29,7 @@ export class AcademicsController {
     private readonly assignmentsService: AssignmentsService,
     private readonly timetableService: TimetableService,
     private readonly leavesService: LeavesService,
+    private readonly substitutionsService: SubstitutionsService,
   ) {}
 
   @Post('grades')
@@ -175,5 +177,34 @@ export class AcademicsController {
   @Roles(UserRole.TEACHER)
   fetchMyClassStudents(@Request() req: any) {
     return this.sectionsService.findMyClassStudents(req.user);
+  }
+
+  // --- Substitutions & Replacements ---
+
+  @Get('substitutions/absent-teachers')
+  @Roles(UserRole.PRINCIPAL, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  fetchAbsentTeachers(@Request() req: any) {
+    return this.substitutionsService.findAbsentTeachers(req.user);
+  }
+
+  @Get('substitutions/available-teachers')
+  @Roles(UserRole.PRINCIPAL, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  fetchAvailableTeachers(
+    @Query('lectureNo') lectureNo: string,
+    @Query('dayOfWeek') dayOfWeek: string,
+    @Request() req: any
+  ) {
+    return this.substitutionsService.findAvailableTeachers(parseInt(lectureNo), dayOfWeek, req.user);
+  }
+
+  @Post('substitutions/assign')
+  @Roles(UserRole.PRINCIPAL, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  assignReplacement(@Body() body: any, @Request() req: any) {
+    return this.substitutionsService.assignReplacement(body, req.user);
+  }
+
+  @Get('substitutions/active')
+  fetchActiveSubstitutions(@Request() req: any) {
+    return this.substitutionsService.getActiveSubstitutions(req.user);
   }
 }

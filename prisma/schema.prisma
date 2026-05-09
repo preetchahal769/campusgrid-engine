@@ -74,6 +74,7 @@ model School {
   education_board String?       @map("education board") @db.VarChar
   attendance      attendance[]
   grade           grade[]
+  substitution    substitution[]
   parent          parent[]
   studioRooms     studioRooms[]
   subject         subject[]
@@ -192,6 +193,8 @@ model teachers {
   studioRoomBooking     studioRoomBooking[]
   users                 users                   @relation(fields: [users_id], references: [id])
   teachersubjectsection teachersubjectsection[]
+  originalSubstitutions substitution[]         @relation("OriginalTeacher")
+  assignedSubstitutions substitution[]         @relation("SubTeacher")
 }
 
 model teachersubjectsection {
@@ -213,8 +216,27 @@ model timetable {
   endTime                   String?
   teachersubjectsection_id  String
   teachersubjectsection     teachersubjectsection @relation(fields: [teachersubjectsection_id], references: [id])
+  substitution              substitution[]
 
   @@unique([dayOfWeek, lectureNo, teachersubjectsection_id])
+}
+
+model substitution {
+  id                String      @id @default(cuid())
+  date              DateTime    @db.Date
+  timetable_id      String
+  originalTeacherId String
+  subTeacherId      String
+  role              String?     @db.VarChar // e.g., 'TEACHING', 'DISCIPLINE', 'REVISION'
+  message           String?     @db.VarChar
+  School_id         String
+
+  timetable       timetable @relation(fields: [timetable_id], references: [id])
+  originalTeacher teachers  @relation("OriginalTeacher", fields: [originalTeacherId], references: [id])
+  subTeacher      teachers  @relation("SubTeacher", fields: [subTeacherId], references: [id])
+  School          School    @relation(fields: [School_id], references: [id])
+
+  @@unique([date, timetable_id])
 }
 
 model parent {

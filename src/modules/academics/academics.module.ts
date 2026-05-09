@@ -8,9 +8,11 @@ import { LeavesService } from './leaves.service';
 import { AcademicsController } from './academics.controller';
 import { PrismaModule } from '../../database/prisma.module';
 
+import { SubstitutionsService } from './substitutions.service';
+
 @Module({
   imports: [PrismaModule],
   controllers: [AcademicsController],
-  providers: [AssignmentsService, GradesService, SectionsService, SubjectsService, TimetableService, LeavesService]
+  providers: [AssignmentsService, GradesService, SectionsService, SubjectsService, TimetableService, LeavesService, SubstitutionsService]
 })
 export class AcademicsModule {}
