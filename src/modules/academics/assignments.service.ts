@@ -13,7 +13,7 @@ export class AssignmentsService {
     private storageService: StorageService,
   ) {}
 
-  async create(createAssignmentDto: CreateAssignmentDto, currentUser: any) {
+  async create(createAssignmentDto: CreateAssignmentDto, currentUser: any, files?: Express.Multer.File[]) {
     // 1. Ensure user is a Teacher
     if (currentUser.role !== UserRole.TEACHER) {
       throw new ForbiddenException('Only teachers can create assignments.');
@@ -43,7 +43,26 @@ export class AssignmentsService {
       throw new ForbiddenException('You are not assigned to this section or subject.');
     }
 
-    // 4. Create Assignment
+    // 4. Handle File Uploads
+    const dbAttachments: any[] = [];
+    if (files && files.length > 0) {
+      for (const file of files) {
+        const key = `assignments/${Date.now()}-${file.originalname}`;
+        await this.storageService.uploadFile(key, file.buffer, file.mimetype);
+        dbAttachments.push({
+          filename: file.originalname,
+          filetype: file.mimetype,
+          fileurl: key,
+        });
+      }
+    }
+
+    // Add legacy attachments if provided
+    if (attachments && attachments.length > 0) {
+      dbAttachments.push(...attachments);
+    }
+
+    // 5. Create Assignment
     return this.prisma.assigment.create({
       data: {
         title,
@@ -53,12 +72,8 @@ export class AssignmentsService {
         subject_id,
         section_id,
         teachers_id: teacherProfile.id,
-        attachments: attachments && attachments.length > 0 ? {
-          create: attachments.map(att => ({
-            filename: att.filename,
-            filetype: att.filetype,
-            fileurl: att.fileurl,
-          }))
+        attachments: dbAttachments.length > 0 ? {
+          create: dbAttachments
         } : undefined
       },
       select: {
@@ -98,7 +113,14 @@ export class AssignmentsService {
           },
           submission: {
             where: { students_id: studentProfile.id },
-            select: { id: true, status: true, submittedAt: true, obatinedmarks: true, fileUrl: true }
+            select: { 
+              id: true, 
+              status: true, 
+              submittedAt: true, 
+              obatinedmarks: true, 
+              fileUrl: true,
+              attachments: true 
+            }
           }
         },
         orderBy: { id: 'desc' }
@@ -153,24 +175,47 @@ export class AssignmentsService {
     }
 
     // Transform attachments and submissions with presigned URLs
-    for (const assig of assignments) {
-      if (assig.attachments) {
+    const transformedAssignments = await Promise.all(assignments.map(async (assig) => {
+      // 1. Assignment Attachments (Teachers' files)
+      if (assig.attachments && Array.isArray(assig.attachments)) {
         for (const att of assig.attachments) {
           if (att.fileurl && !att.fileurl.startsWith('http')) {
             att.fileurl = await this.storageService.getPresignedUrl(att.fileurl);
           }
         }
       }
-      if (assig.submission && Array.isArray(assig.submission)) {
-        for (const sub of assig.submission) {
-          if (sub.fileUrl && !sub.fileUrl.startsWith('http')) {
-            sub.fileUrl = await this.storageService.getPresignedUrl(sub.fileUrl);
+
+      // 2. Submission Details (Students' files)
+      let submissionInfo: any = null;
+      let isSubmitted = false;
+
+      if (assig.submission && Array.isArray(assig.submission) && assig.submission.length > 0) {
+        const sub = assig.submission[0];
+        isSubmitted = true;
+        
+        // Check for multi-file attachments (New system)
+        if (sub.attachments && Array.isArray(sub.attachments)) {
+          for (const att of sub.attachments) {
+            if (att.fileurl && !att.fileurl.startsWith('http')) {
+              att.fileurl = await this.storageService.getPresignedUrl(att.fileurl);
+            }
           }
         }
+        // Legacy check for single fileUrl
+        if (sub.fileUrl && !sub.fileUrl.startsWith('http')) {
+          sub.fileUrl = await this.storageService.getPresignedUrl(sub.fileUrl);
+        }
+        submissionInfo = sub;
       }
-    }
 
-    return assignments;
+      return {
+        ...assig,
+        isSubmitted,
+        submission: submissionInfo // Now an object, not an array
+      };
+    }));
+
+    return transformedAssignments;
   }
 
   async getAllowedContexts(currentUser: any) {
@@ -206,7 +251,7 @@ export class AssignmentsService {
     });
   }
 
-  async submit(assignmentId: string, submissionDto: { content?: string }, currentUser: any, file?: Express.Multer.File) {
+  async submit(assignmentId: string, submissionDto: { content?: string }, currentUser: any, files?: Express.Multer.File[]) {
     if (currentUser.role !== UserRole.STUDENT) {
       throw new ForbiddenException('Only students can submit assignments.');
     }
@@ -232,14 +277,7 @@ export class AssignmentsService {
       throw new ForbiddenException('This assignment is not for your class.');
     }
 
-    // Handle file upload
-    let fileKey: string | undefined = undefined;
-    if (file) {
-      fileKey = `submissions/${assignmentId}/${studentProfile.id}-${Date.now()}-${file.originalname}`;
-      await this.storageService.uploadFile(fileKey, file.buffer, file.mimetype);
-    }
-
-    // Upsert submission (allow re-submission)
+    // 3. Check for existing submission to prevent duplicates
     const existingSubmission = await this.prisma.submission.findFirst({
       where: {
         assigment_id: assignmentId,
@@ -248,25 +286,33 @@ export class AssignmentsService {
     });
 
     if (existingSubmission) {
-      return this.prisma.submission.update({
-        where: { id: existingSubmission.id },
-        data: {
-          content: submissionDto.content,
-          fileUrl: fileKey || undefined,
-          submittedAt: new Date(),
-          status: 'SUBMITTED'
-        }
-      });
+      throw new ForbiddenException('You have already submitted this assignment.');
+    }
+
+    // 4. Handle file uploads
+    const dbAttachments: any[] = [];
+    if (files && files.length > 0) {
+      for (const file of files) {
+        const key = `submissions/${assignmentId}/${studentProfile.id}-${Date.now()}-${file.originalname}`;
+        await this.storageService.uploadFile(key, file.buffer, file.mimetype);
+        dbAttachments.push({
+          filename: file.originalname,
+          filetype: file.mimetype,
+          fileurl: key,
+        });
+      }
     }
 
     return this.prisma.submission.create({
       data: {
         content: submissionDto.content,
-        fileUrl: fileKey,
         submittedAt: new Date(),
         status: 'SUBMITTED',
         assigment_id: assignmentId,
-        students_id: studentProfile.id
+        students_id: studentProfile.id,
+        attachments: dbAttachments.length > 0 ? {
+          create: dbAttachments
+        } : undefined
       }
     });
   }
@@ -301,5 +347,70 @@ export class AssignmentsService {
     await this.analytics.recalculateGlobalRating(submission.students.users_id);
 
     return updatedSubmission;
+  }
+
+  async findById(id: string, currentUser: any) {
+    const assignment = await this.prisma.assigment.findUnique({
+      where: { id },
+      include: {
+        attachments: true,
+        subject: { select: { name: true } },
+        section: { select: { name: true } },
+        teachers: {
+          select: { users: { select: { name: true } } }
+        }
+      }
+    });
+
+    if (!assignment) throw new NotFoundException('Assignment not found');
+
+    // Transform attachments
+    if (assignment.attachments) {
+      for (const att of assignment.attachments) {
+        if (att.fileurl && !att.fileurl.startsWith('http')) {
+          att.fileurl = await this.storageService.getPresignedUrl(att.fileurl);
+        }
+      }
+    }
+
+    return assignment;
+  }
+
+  async fetchSubmissions(assignmentId: string, currentUser: any) {
+    // 1. Ensure user is Teacher or Admin
+    if (currentUser.role === UserRole.STUDENT) {
+      throw new ForbiddenException('Students cannot view all submissions.');
+    }
+
+    const submissions = await this.prisma.submission.findMany({
+      where: { assigment_id: assignmentId },
+      include: {
+        students: {
+          select: {
+            id: true,
+            rollNumber: true,
+            users: { select: { name: true } }
+          }
+        },
+        attachments: true
+      },
+      orderBy: { submittedAt: 'desc' }
+    });
+
+    // 2. Generate Presigned URLs for submission files
+    for (const sub of submissions as any[]) {
+      if (sub.attachments) {
+        for (const att of sub.attachments) {
+          if (att.fileurl && !att.fileurl.startsWith('http')) {
+            att.fileurl = await this.storageService.getPresignedUrl(att.fileurl);
+          }
+        }
+      }
+      if (sub.fileUrl && !sub.fileUrl.startsWith('http')) {
+        sub.fileUrl = await this.storageService.getPresignedUrl(sub.fileUrl);
+      }
+    }
+
+    return submissions;
   }
 }

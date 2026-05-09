@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateBroadcastDto, TargetType } from './dto/create-broadcast.dto';
 import { UserRole } from '@prisma/client';
@@ -11,35 +11,42 @@ export class BroadcastsService {
     private storageService: StorageService,
   ) {}
 
-  async create(createBroadcastDto: CreateBroadcastDto, currentUser: any, file?: Express.Multer.File) {
+  async create(createBroadcastDto: CreateBroadcastDto, currentUser: any, files?: Express.Multer.File[]) {
     const { title, message, target, attachments } = createBroadcastDto;
 
-    // 1. Serialize target
-    let targetrole = '';
-    const t = typeof target === 'string' ? JSON.parse(target) : target;
+    // 1. Determine Target (Restricted for Teachers/Principals)
+    let targetrole = 'ALL';
     
-    if (t.type === TargetType.ALL) {
-      targetrole = 'ALL';
-    } else if (t.type === TargetType.ROLE) {
-      targetrole = `ROLE:${t.role}`;
-    } else if (t.type === TargetType.CLASS) {
-      targetrole = `CLASS:${t.classIds?.join(',')}`;
-    } else if (t.type === TargetType.SECTION) {
-      targetrole = `SECTION:${t.sectionId}`;
-    } else if (t.type === TargetType.USER) {
-      targetrole = `USER:${t.userIds?.join(',')}`;
+    // Only Admin and Super Admin can specify a specific target (Role, Class, Section, etc.)
+    if (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN) {
+      if (target) {
+        const t = typeof target === 'string' ? JSON.parse(target) : target;
+        if (t.type === TargetType.ALL) {
+          targetrole = 'ALL';
+        } else if (t.type === TargetType.ROLE) {
+          targetrole = `ROLE:${t.role}`;
+        } else if (t.type === TargetType.CLASS) {
+          targetrole = `CLASS:${t.classIds?.join(',')}`;
+        } else if (t.type === TargetType.SECTION) {
+          targetrole = `SECTION:${t.sectionId}`;
+        } else if (t.type === TargetType.USER) {
+          targetrole = `USER:${t.userIds?.join(',')}`;
+        }
+      }
     }
 
-    // 2. Handle File Upload
+    // 2. Handle File Uploads
     const dbAttachments: any[] = [];
-    if (file) {
-      const key = `broadcasts/${Date.now()}-${file.originalname}`;
-      await this.storageService.uploadFile(key, file.buffer, file.mimetype);
-      dbAttachments.push({
-        filename: file.originalname,
-        filetype: file.mimetype,
-        fileurl: key, // Store the key, not the full URL
-      });
+    if (files && files.length > 0) {
+      for (const file of files) {
+        const key = `broadcasts/${Date.now()}-${file.originalname}`;
+        await this.storageService.uploadFile(key, file.buffer, file.mimetype);
+        dbAttachments.push({
+          filename: file.originalname,
+          filetype: file.mimetype,
+          fileurl: key,
+        });
+      }
     }
 
     // Add existing attachments if any (legacy or manual URLs)
@@ -59,7 +66,10 @@ export class BroadcastsService {
         } : undefined
       },
       include: {
-        attachments: true
+        attachments: true,
+        author: {
+          select: { name: true, role: true, School_id: true }
+        }
       }
     });
   }
@@ -127,24 +137,45 @@ export class BroadcastsService {
     return broadcasts;
   }
 
-  getTargetRoles(currentUser: any) {
+  async getTargetRoles(currentUser: any) {
+    // Only Admin and Super Admin can select target roles.
+    // Others (Teachers/Principals) send to the whole school by default.
+    if (currentUser.role !== UserRole.ADMIN && currentUser.role !== UserRole.SUPER_ADMIN) {
+      return [];
+    }
+
     const allRoles = [
       { label: 'Principal', value: UserRole.PRINCIPAL },
       { label: 'Teacher', value: UserRole.TEACHER },
       { label: 'Admin', value: UserRole.ADMIN },
       { label: 'Student', value: UserRole.STUDENT },
       { label: 'Parent', value: UserRole.PARENT },
-      { label: 'Staff', value: UserRole.STAFF },
       { label: 'Management', value: UserRole.MANAGEMENT },
     ];
 
-    if (currentUser.role === UserRole.TEACHER) {
-      return allRoles.filter(role => 
-        ([UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.ADMIN, UserRole.STUDENT, UserRole.PARENT] as UserRole[]).includes(role.value)
-      );
+    return allRoles;
+  }
+
+  async findById(id: string, currentUser: any) {
+    const broadcast = await this.prisma.broadcast.findUnique({
+      where: { id },
+      include: {
+        attachments: true,
+        author: { select: { name: true, role: true } }
+      }
+    });
+
+    if (!broadcast) throw new NotFoundException('Broadcast not found');
+
+    // Generate Presigned URLs
+    if (broadcast.attachments) {
+      for (const att of broadcast.attachments) {
+        if (att.fileurl && !att.fileurl.startsWith('http')) {
+          att.fileurl = await this.storageService.getPresignedUrl(att.fileurl);
+        }
+      }
     }
 
-    // For Admin/Principal/Super Admin, return all except Super Admin
-    return allRoles;
+    return broadcast;
   }
 }

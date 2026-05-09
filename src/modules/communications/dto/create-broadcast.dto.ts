@@ -56,10 +56,10 @@ export class CreateBroadcastDto {
   @IsString()
   message: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @ValidateNested()
   @Type(() => TargetDto)
-  target: TargetDto;
+  target?: TargetDto;
 
   @IsOptional()
   @IsArray()

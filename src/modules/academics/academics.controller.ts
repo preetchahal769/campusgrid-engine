@@ -1,5 +1,5 @@
-import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch, UseInterceptors, UploadedFile } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch, UseInterceptors, UploadedFiles } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { GradesService } from './grades.service';
 import { SectionsService } from './sections.service';
 import { SubjectsService } from './subjects.service';
@@ -68,8 +68,13 @@ export class AcademicsController {
 
   @Post('assignments')
   @Roles(UserRole.TEACHER)
-  createAssignment(@Body() createAssignmentDto: CreateAssignmentDto, @Request() req: any) {
-    return this.assignmentsService.create(createAssignmentDto, req.user);
+  @UseInterceptors(FilesInterceptor('files'))
+  createAssignment(
+    @Body() createAssignmentDto: CreateAssignmentDto, 
+    @Request() req: any,
+    @UploadedFiles() files?: Express.Multer.File[]
+  ) {
+    return this.assignmentsService.create(createAssignmentDto, req.user, files);
   }
 
   @Get('assignments')
@@ -85,14 +90,25 @@ export class AcademicsController {
 
   @Post('assignments/:id/submit')
   @Roles(UserRole.STUDENT)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FilesInterceptor('files'))
   submitAssignment(
     @Param('id') id: string, 
     @Body() submissionDto: { content?: string }, 
     @Request() req: any,
-    @UploadedFile() file?: Express.Multer.File
+    @UploadedFiles() files?: Express.Multer.File[]
   ) {
-    return this.assignmentsService.submit(id, submissionDto, req.user, file);
+    return this.assignmentsService.submit(id, submissionDto, req.user, files);
+  }
+
+  @Get('assignments/:id')
+  fetchAssignmentDetail(@Param('id') id: string, @Request() req: any) {
+    return this.assignmentsService.findById(id, req.user);
+  }
+
+  @Get('assignments/:id/submissions')
+  @Roles(UserRole.TEACHER, UserRole.PRINCIPAL, UserRole.ADMIN)
+  fetchAssignmentSubmissions(@Param('id') id: string, @Request() req: any) {
+    return this.assignmentsService.fetchSubmissions(id, req.user);
   }
 
   @Post('submissions/:id/grade')

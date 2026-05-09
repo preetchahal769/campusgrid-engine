@@ -167,6 +167,23 @@ export class UsersService {
   }
 
   async updateProfilePhoto(userId: string, file: Express.Multer.File) {
+    // 1. Get current user to see if they already have a photo
+    const currentUser = await this.prisma.users.findUnique({
+      where: { id: userId },
+      select: { photoUrl: true }
+    });
+
+    // 2. Delete old photo from Storage if it exists
+    if (currentUser?.photoUrl) {
+      try {
+        await this.storageService.deleteFile(currentUser.photoUrl);
+      } catch (error) {
+        console.error(`Failed to delete old profile photo: ${currentUser.photoUrl}`, error);
+        // We continue anyway so the new upload isn't blocked
+      }
+    }
+
+    // 3. Upload new photo
     const key = `profiles/${userId}-${Date.now()}-${file.originalname}`;
     await this.storageService.uploadFile(key, file.buffer, file.mimetype);
     

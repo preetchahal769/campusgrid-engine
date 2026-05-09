@@ -46,4 +46,14 @@ export class StorageService {
     await this.s3Client.send(command);
     return key;
   }
+
+  async deleteFile(key: string): Promise<void> {
+    const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+    const command = new DeleteObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+    });
+
+    await this.s3Client.send(command);
+  }
 }

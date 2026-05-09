@@ -24,14 +24,16 @@ model assigment {
 }
 
 model attachment {
-  id           String     @id @default(cuid())
-  fileurl      String?
-  filetype     String?
-  filename     String?
-  broadcast_id String?
-  assigment_id String?
-  assigment    assigment? @relation(fields: [assigment_id], references: [id])
-  broadcast    broadcast? @relation(fields: [broadcast_id], references: [id])
+  id            String      @id @default(cuid())
+  fileurl       String?
+  filetype      String?
+  filename      String?
+  broadcast_id  String?
+  assigment_id  String?
+  submission_id String?
+  assigment     assigment?  @relation(fields: [assigment_id], references: [id])
+  broadcast     broadcast?  @relation(fields: [broadcast_id], references: [id])
+  submission    submission? @relation(fields: [submission_id], references: [id])
 }
 
 model broadcast {
@@ -163,16 +165,17 @@ model subject {
 }
 
 model submission {
-  id            String    @id @default(cuid())
+  id            String       @id @default(cuid())
   content       String?
   fileUrl       String?
   status        String?
   obatinedmarks Int?
-  submittedAt   DateTime? @db.Date
+  submittedAt   DateTime?    @db.Date
   assigment_id  String
   students_id   String
-  assigment     assigment @relation(fields: [assigment_id], references: [id])
-  students      students  @relation(fields: [students_id], references: [id])
+  assigment     assigment    @relation(fields: [assigment_id], references: [id])
+  students      students     @relation(fields: [students_id], references: [id])
+  attachments   attachment[]
 }
 
 model teachers {
