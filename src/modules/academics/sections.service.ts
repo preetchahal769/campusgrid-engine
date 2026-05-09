@@ -62,10 +62,45 @@ export class SectionsService {
       }
     }
 
-    // 3. Update the section with the class incharge
+    // 3. Check if teacher is already incharge of another section
+    const existingIncharge = await this.prisma.section.findFirst({
+      where: { classInchargeId: teacherId },
+      include: { grade: true }
+    });
+
+    if (existingIncharge) {
+      if (existingIncharge.id === sectionId) {
+        throw new ConflictException('This teacher is already the incharge of this section.');
+      }
+      throw new ConflictException(
+        `This teacher is already the incharge of section '${existingIncharge.name}' in class '${existingIncharge.grade.name}'.`
+      );
+    }
+
+    // 4. Update the target section with the class incharge
     return this.prisma.section.update({
       where: { id: sectionId },
       data: { classInchargeId: teacherId }
+    });
+  }
+
+  async findAll(currentUser: any) {
+    const whereClause: any = {};
+    if (currentUser.role !== UserRole.SUPER_ADMIN) {
+      if (!currentUser.School_id) {
+        throw new ForbiddenException('School ID not found in user context.');
+      }
+      whereClause.grade = { School_id: currentUser.School_id };
+    }
+
+    return this.prisma.section.findMany({
+      where: whereClause,
+      include: {
+        grade: true,
+        classIncharge: {
+          include: { users: { select: { name: true } } }
+        }
+      }
     });
   }
 }

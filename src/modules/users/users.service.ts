@@ -1,12 +1,16 @@
 import { Injectable, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private storageService: StorageService,
+  ) {}
 
   // Define which roles can create which other roles
   private readonly roleCreationMap: Record<UserRole, UserRole[]> = {
@@ -139,7 +143,7 @@ export class UsersService {
   }
 
   async updateProfile(userId: string, updateDto: any) {
-    return this.prisma.users.update({
+    const user = await this.prisma.users.update({
       where: { id: userId },
       data: {
         name: updateDto.name,
@@ -151,7 +155,54 @@ export class UsersService {
         email: true,
         phoneNo: true,
         role: true,
+        photoUrl: true,
       },
     });
+
+    if (user.photoUrl && !user.photoUrl.startsWith('http')) {
+      user.photoUrl = await this.storageService.getPresignedUrl(user.photoUrl);
+    }
+
+    return user;
+  }
+
+  async updateProfilePhoto(userId: string, file: Express.Multer.File) {
+    const key = `profiles/${userId}-${Date.now()}-${file.originalname}`;
+    await this.storageService.uploadFile(key, file.buffer, file.mimetype);
+    
+    const user = await this.prisma.users.update({
+      where: { id: userId },
+      data: { photoUrl: key },
+      select: { id: true, photoUrl: true }
+    });
+
+    user.photoUrl = await this.storageService.getPresignedUrl(key);
+    return user;
+  }
+
+  async findById(id: string) {
+    const user = await this.prisma.users.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        phoneNo: true,
+        photoUrl: true,
+        School_id: true,
+        School: {
+          select: {
+            name: true,
+          }
+        }
+      },
+    });
+
+    if (user && user.photoUrl && !user.photoUrl.startsWith('http')) {
+      user.photoUrl = await this.storageService.getPresignedUrl(user.photoUrl);
+    }
+
+    return user;
   }
 }

@@ -112,4 +112,10 @@ export class AttendanceService {
       orderBy: { date: 'asc' }
     });
   }
+
+  async markSelfAttendance(currentUser: any, status: AttendanceStatus) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return this.markAttendanceRecord(today, currentUser.id, status, currentUser);
+  }
 }

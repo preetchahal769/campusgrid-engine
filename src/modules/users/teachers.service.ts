@@ -122,4 +122,27 @@ export class TeachersService {
 
     return profile;
   }
+
+  async findAll(currentUser: any) {
+    const whereClause: any = {};
+    if (currentUser.role !== UserRole.SUPER_ADMIN) {
+      if (!currentUser.School_id) {
+        throw new ForbiddenException('School ID not found in user context.');
+      }
+      whereClause.School_id = currentUser.School_id;
+    }
+
+    return this.prisma.teachers.findMany({
+      where: whereClause,
+      include: {
+        users: { select: { name: true, email: true, phoneNo: true } },
+        teachersubjectsection: {
+          include: {
+            subject: { select: { name: true, code: true } },
+            section: { include: { grade: true } }
+          }
+        }
+      }
+    });
+  }
 }

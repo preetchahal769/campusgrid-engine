@@ -29,4 +29,10 @@ export class TeachersController {
   fetchMyProfile(@Request() req: any) {
     return this.teachersService.findMyProfile(req.user);
   }
+
+  @Get()
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL)
+  findAll(@Request() req: any) {
+    return this.teachersService.findAll(req.user);
+  }
 }

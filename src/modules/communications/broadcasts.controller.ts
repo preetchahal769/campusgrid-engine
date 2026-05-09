@@ -1,4 +1,5 @@
-import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, Get, UseGuards, Request, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { BroadcastsService } from './broadcasts.service';
 import { CreateBroadcastDto } from './dto/create-broadcast.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -13,8 +14,13 @@ export class BroadcastsController {
 
   @Post()
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
-  create(@Body() createBroadcastDto: CreateBroadcastDto, @Request() req: any) {
-    return this.broadcastsService.create(createBroadcastDto, req.user);
+  @UseInterceptors(FileInterceptor('file'))
+  create(
+    @Body() createBroadcastDto: CreateBroadcastDto, 
+    @Request() req: any,
+    @UploadedFile() file?: Express.Multer.File
+  ) {
+    return this.broadcastsService.create(createBroadcastDto, req.user, file);
   }
 
   @Get()

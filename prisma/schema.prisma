@@ -232,6 +232,7 @@ model users {
   phoneNo      String?      @db.VarChar
   role         UserRole     @default(STUDENT)
   School_id    String?
+  photoUrl     String?      @db.VarChar
   globalRating Float        @default(0.0)
   globalRank   Int?
   attendance   attendance[]

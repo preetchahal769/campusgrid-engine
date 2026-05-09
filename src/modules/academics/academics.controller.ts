@@ -1,4 +1,5 @@
-import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { GradesService } from './grades.service';
 import { SectionsService } from './sections.service';
 import { SubjectsService } from './subjects.service';
@@ -35,16 +36,34 @@ export class AcademicsController {
     return this.gradesService.create(createGradeDto, req.user);
   }
 
+  @Get('grades')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  fetchGrades(@Request() req: any) {
+    return this.gradesService.findAll(req.user);
+  }
+
   @Post('sections')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
   createSection(@Body() createSectionDto: CreateSectionDto, @Request() req: any) {
     return this.sectionsService.create(createSectionDto, req.user);
   }
 
+  @Get('sections')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  fetchSections(@Request() req: any) {
+    return this.sectionsService.findAll(req.user);
+  }
+
   @Post('subjects')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
   createSubject(@Body() createSubjectDto: CreateSubjectDto, @Request() req: any) {
     return this.subjectsService.create(createSubjectDto, req.user);
+  }
+
+  @Get('subjects')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  fetchSubjects(@Request() req: any) {
+    return this.subjectsService.findAll(req.user);
   }
 
   @Post('assignments')
@@ -66,8 +85,14 @@ export class AcademicsController {
 
   @Post('assignments/:id/submit')
   @Roles(UserRole.STUDENT)
-  submitAssignment(@Param('id') id: string, @Body() submissionDto: { content?: string, fileUrl?: string }, @Request() req: any) {
-    return this.assignmentsService.submit(id, submissionDto, req.user);
+  @UseInterceptors(FileInterceptor('file'))
+  submitAssignment(
+    @Param('id') id: string, 
+    @Body() submissionDto: { content?: string }, 
+    @Request() req: any,
+    @UploadedFile() file?: Express.Multer.File
+  ) {
+    return this.assignmentsService.submit(id, submissionDto, req.user, file);
   }
 
   @Post('submissions/:id/grade')

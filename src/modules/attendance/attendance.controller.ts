@@ -4,7 +4,7 @@ import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, AttendanceStatus } from '@prisma/client';
 
 @Controller('attendance')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -39,5 +39,11 @@ export class AttendanceController {
       month ? parseInt(month) : undefined, 
       year ? parseInt(year) : undefined
     );
+  }
+
+  @Post('me')
+  @Roles(UserRole.TEACHER, UserRole.STAFF, UserRole.PRINCIPAL, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  markSelfAttendance(@Body() body: { status: AttendanceStatus }, @Request() req: any) {
+    return this.attendanceService.markSelfAttendance(req.user, body.status);
   }
 }

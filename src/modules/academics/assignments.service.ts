@@ -3,12 +3,14 @@ import { PrismaService } from '../../database/prisma.service';
 import { CreateAssignmentDto } from './dto/create-assignment.dto';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { UserRole } from '@prisma/client';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class AssignmentsService {
   constructor(
     private prisma: PrismaService,
-    private analytics: AnalyticsService
+    private analytics: AnalyticsService,
+    private storageService: StorageService,
   ) {}
 
   async create(createAssignmentDto: CreateAssignmentDto, currentUser: any) {
@@ -70,6 +72,8 @@ export class AssignmentsService {
   }
 
   async fetchForUser(currentUser: any) {
+    let assignments: any[] = [];
+
     if (currentUser.role === UserRole.STUDENT) {
       const studentProfile = await this.prisma.students.findFirst({
         where: { users_id: currentUser.id, status: 'ACTIVE' }
@@ -77,7 +81,7 @@ export class AssignmentsService {
 
       if (!studentProfile) return [];
 
-      return this.prisma.assigment.findMany({
+      assignments = await this.prisma.assigment.findMany({
         where: { section_id: studentProfile.section_id },
         select: {
           id: true,
@@ -94,7 +98,7 @@ export class AssignmentsService {
           },
           submission: {
             where: { students_id: studentProfile.id },
-            select: { id: true, status: true, submittedAt: true, obatinedmarks: true }
+            select: { id: true, status: true, submittedAt: true, obatinedmarks: true, fileUrl: true }
           }
         },
         orderBy: { id: 'desc' }
@@ -107,7 +111,7 @@ export class AssignmentsService {
 
       if (!teacherProfile) return [];
 
-      return this.prisma.assigment.findMany({
+      assignments = await this.prisma.assigment.findMany({
         where: { teachers_id: teacherProfile.id },
         select: {
           id: true,
@@ -122,30 +126,51 @@ export class AssignmentsService {
         },
         orderBy: { id: 'desc' }
       });
+    } else {
+      if (!currentUser.School_id) return [];
+
+      assignments = await this.prisma.assigment.findMany({
+        where: {
+          section: {
+            grade: { School_id: currentUser.School_id }
+          }
+        },
+        select: {
+          id: true,
+          title: true,
+          dueDate: true,
+          attachments: true,
+          section: { select: { name: true } },
+          subject: { select: { name: true } },
+          teachers: {
+            select: {
+              users: { select: { name: true } }
+            }
+          }
+        },
+        orderBy: { id: 'desc' }
+      });
     }
 
-    if (!currentUser.School_id) return [];
-
-    return this.prisma.assigment.findMany({
-      where: {
-        section: {
-          grade: { School_id: currentUser.School_id }
-        }
-      },
-      select: {
-        id: true,
-        title: true,
-        dueDate: true,
-        section: { select: { name: true } },
-        subject: { select: { name: true } },
-        teachers: {
-          select: {
-            users: { select: { name: true } }
+    // Transform attachments and submissions with presigned URLs
+    for (const assig of assignments) {
+      if (assig.attachments) {
+        for (const att of assig.attachments) {
+          if (att.fileurl && !att.fileurl.startsWith('http')) {
+            att.fileurl = await this.storageService.getPresignedUrl(att.fileurl);
           }
         }
-      },
-      orderBy: { id: 'desc' }
-    });
+      }
+      if (assig.submission && Array.isArray(assig.submission)) {
+        for (const sub of assig.submission) {
+          if (sub.fileUrl && !sub.fileUrl.startsWith('http')) {
+            sub.fileUrl = await this.storageService.getPresignedUrl(sub.fileUrl);
+          }
+        }
+      }
+    }
+
+    return assignments;
   }
 
   async getAllowedContexts(currentUser: any) {
@@ -181,7 +206,7 @@ export class AssignmentsService {
     });
   }
 
-  async submit(assignmentId: string, submissionDto: { content?: string, fileUrl?: string }, currentUser: any) {
+  async submit(assignmentId: string, submissionDto: { content?: string }, currentUser: any, file?: Express.Multer.File) {
     if (currentUser.role !== UserRole.STUDENT) {
       throw new ForbiddenException('Only students can submit assignments.');
     }
@@ -207,6 +232,13 @@ export class AssignmentsService {
       throw new ForbiddenException('This assignment is not for your class.');
     }
 
+    // Handle file upload
+    let fileKey: string | undefined = undefined;
+    if (file) {
+      fileKey = `submissions/${assignmentId}/${studentProfile.id}-${Date.now()}-${file.originalname}`;
+      await this.storageService.uploadFile(fileKey, file.buffer, file.mimetype);
+    }
+
     // Upsert submission (allow re-submission)
     const existingSubmission = await this.prisma.submission.findFirst({
       where: {
@@ -220,7 +252,7 @@ export class AssignmentsService {
         where: { id: existingSubmission.id },
         data: {
           content: submissionDto.content,
-          fileUrl: submissionDto.fileUrl,
+          fileUrl: fileKey || undefined,
           submittedAt: new Date(),
           status: 'SUBMITTED'
         }
@@ -230,7 +262,7 @@ export class AssignmentsService {
     return this.prisma.submission.create({
       data: {
         content: submissionDto.content,
-        fileUrl: submissionDto.fileUrl,
+        fileUrl: fileKey,
         submittedAt: new Date(),
         status: 'SUBMITTED',
         assigment_id: assignmentId,

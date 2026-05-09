@@ -16,6 +16,7 @@ import { StudiosModule } from './modules/studios/studios.module';
 import { BroadcastModule } from './modules/communications/broadcast.module';
 import { BillingModule } from './modules/finance/billing.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { StorageModule } from './modules/storage/storage.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     BroadcastModule,
     BillingModule,
     AnalyticsModule,
+    StorageModule,
   ],
   controllers: [AppController],
   providers: [

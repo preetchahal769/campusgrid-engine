@@ -2,50 +2,60 @@ import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateBroadcastDto, TargetType } from './dto/create-broadcast.dto';
 import { UserRole } from '@prisma/client';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class BroadcastsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private storageService: StorageService,
+  ) {}
 
-  async create(createBroadcastDto: CreateBroadcastDto, currentUser: any) {
+  async create(createBroadcastDto: CreateBroadcastDto, currentUser: any, file?: Express.Multer.File) {
     const { title, message, target, attachments } = createBroadcastDto;
 
-    // Serialize target
+    // 1. Serialize target
     let targetrole = '';
-    if (target.type === TargetType.ALL) {
+    const t = typeof target === 'string' ? JSON.parse(target) : target;
+    
+    if (t.type === TargetType.ALL) {
       targetrole = 'ALL';
-    } else if (target.type === TargetType.ROLE) {
-      targetrole = `ROLE:${target.role}`;
-    } else if (target.type === TargetType.CLASS) {
-      if (!target.classIds || target.classIds.length === 0) {
-        throw new ForbiddenException('classIds must be provided when targeting CLASS');
-      }
-      targetrole = `CLASS:${target.classIds.join(',')}`;
-    } else if (target.type === TargetType.SECTION) {
-      if (!target.sectionId) {
-        throw new ForbiddenException('sectionId must be provided when targeting SECTION');
-      }
-      targetrole = `SECTION:${target.sectionId}`;
-    } else if (target.type === TargetType.USER) {
-      if (!target.userIds || target.userIds.length === 0) {
-        throw new ForbiddenException('userIds must be provided when targeting USER');
-      }
-      targetrole = `USER:${target.userIds.join(',')}`;
+    } else if (t.type === TargetType.ROLE) {
+      targetrole = `ROLE:${t.role}`;
+    } else if (t.type === TargetType.CLASS) {
+      targetrole = `CLASS:${t.classIds?.join(',')}`;
+    } else if (t.type === TargetType.SECTION) {
+      targetrole = `SECTION:${t.sectionId}`;
+    } else if (t.type === TargetType.USER) {
+      targetrole = `USER:${t.userIds?.join(',')}`;
     }
 
-    // Insert broadcast
+    // 2. Handle File Upload
+    const dbAttachments: any[] = [];
+    if (file) {
+      const key = `broadcasts/${Date.now()}-${file.originalname}`;
+      await this.storageService.uploadFile(key, file.buffer, file.mimetype);
+      dbAttachments.push({
+        filename: file.originalname,
+        filetype: file.mimetype,
+        fileurl: key, // Store the key, not the full URL
+      });
+    }
+
+    // Add existing attachments if any (legacy or manual URLs)
+    if (attachments && Array.isArray(attachments)) {
+      dbAttachments.push(...attachments);
+    }
+
+    // 3. Insert broadcast
     return this.prisma.broadcast.create({
       data: {
         title,
         message,
         targetrole,
         author_id: currentUser.id,
-        attachments: attachments && attachments.length > 0 ? {
-          create: attachments.map(att => ({
-            filename: att.filename,
-            filetype: att.filetype,
-            fileurl: att.fileurl,
-          }))
+        attachments: dbAttachments.length > 0 ? {
+          create: dbAttachments
         } : undefined
       },
       include: {
@@ -58,7 +68,7 @@ export class BroadcastsService {
     const orConditions: any[] = [
       { targetrole: 'ALL' },
       { targetrole: `ROLE:${currentUser.role}` },
-      { targetrole: { startsWith: 'USER:', contains: currentUser.id } }
+      { targetrole: { contains: currentUser.id } } // Simplified for USER: containment
     ];
 
     if (currentUser.role === UserRole.STUDENT) {
@@ -69,12 +79,9 @@ export class BroadcastsService {
       
       if (studentProfile) {
         orConditions.push({ targetrole: `SECTION:${studentProfile.section_id}` });
-        if (studentProfile.section && studentProfile.section.grade_id) {
+        if (studentProfile.section?.grade_id) {
           orConditions.push({ 
-            targetrole: { 
-              startsWith: 'CLASS:', 
-              contains: studentProfile.section.grade_id 
-            } 
+            targetrole: { contains: studentProfile.section.grade_id } 
           });
         }
       }
@@ -94,7 +101,7 @@ export class BroadcastsService {
       };
     }
 
-    return this.prisma.broadcast.findMany({
+    const broadcasts = await this.prisma.broadcast.findMany({
       where: whereClause,
       include: {
         attachments: true,
@@ -104,6 +111,20 @@ export class BroadcastsService {
       },
       orderBy: { id: 'desc' }
     });
+
+    // 4. Generate Presigned URLs for attachments
+    for (const bc of broadcasts) {
+      if (bc.attachments) {
+        for (const att of bc.attachments) {
+          // If fileurl is a key (no http), presign it
+          if (att.fileurl && !att.fileurl.startsWith('http')) {
+            att.fileurl = await this.storageService.getPresignedUrl(att.fileurl);
+          }
+        }
+      }
+    }
+
+    return broadcasts;
   }
 
   getTargetRoles(currentUser: any) {
@@ -119,7 +140,7 @@ export class BroadcastsService {
 
     if (currentUser.role === UserRole.TEACHER) {
       return allRoles.filter(role => 
-        [UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.ADMIN, UserRole.STUDENT, UserRole.PARENT].includes(role.value)
+        ([UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.ADMIN, UserRole.STUDENT, UserRole.PARENT] as UserRole[]).includes(role.value)
       );
     }
 
