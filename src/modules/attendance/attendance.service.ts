@@ -66,14 +66,19 @@ export class AttendanceService {
     return results;
   }
 
-  async fetchAttendance(date: string, users_id: string, currentUser: any) {
+  async fetchAttendance(filters: { date?: string, users_id?: string, section_id?: string }, currentUser: any) {
     const whereClause: any = {};
     
-    if (date) {
-      whereClause.date = new Date(date);
+    if (filters.date) {
+      whereClause.date = new Date(filters.date);
     }
-    if (users_id) {
-      whereClause.users_id = users_id;
+    if (filters.users_id) {
+      whereClause.users_id = filters.users_id;
+    }
+    if (filters.section_id) {
+      whereClause.users = {
+        students: { some: { section_id: filters.section_id } }
+      };
     }
 
     // School isolation
@@ -86,11 +91,34 @@ export class AttendanceService {
       where: whereClause,
       include: {
         users: {
-          select: { name: true, email: true, role: true }
+          select: { 
+            name: true, 
+            email: true, 
+            role: true,
+            students: { select: { rollNumber: true, section: { select: { name: true } } } }
+          }
         }
       },
       orderBy: { date: 'desc' }
     });
+  }
+
+  async validateIncharge(sectionId: string, currentUser: any) {
+    if (currentUser.role === UserRole.SUPER_ADMIN || currentUser.role === UserRole.ADMIN) return true;
+
+    const teacher = await this.prisma.teachers.findFirst({
+      where: { users_id: currentUser.id }
+    });
+    if (!teacher) throw new ForbiddenException('Teacher profile not found.');
+
+    const section = await this.prisma.section.findUnique({
+      where: { id: sectionId }
+    });
+
+    if (!section || section.classInchargeId !== teacher.id) {
+      throw new ForbiddenException('You are not the in-charge of this class.');
+    }
+    return true;
   }
 
   async fetchMyAttendance(currentUser: any, month?: number, year?: number) {

@@ -103,4 +103,48 @@ export class SectionsService {
       }
     });
   }
+
+  async findMyClassStudents(currentUser: any) {
+    const teacher = await this.prisma.teachers.findFirst({
+      where: { users_id: currentUser.id }
+    });
+    if (!teacher) throw new ForbiddenException('Teacher profile not found.');
+
+    const section = await this.prisma.section.findFirst({
+      where: { classInchargeId: teacher.id },
+      include: {
+        students: {
+          include: {
+            users: { select: { name: true, photoUrl: true, id: true } },
+            leaveRequest: {
+              where: {
+                startDate: { lte: new Date() },
+                endDate: { gte: new Date() },
+                status: 'APPROVED'
+              },
+              select: { id: true, reason: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!section) {
+      throw new NotFoundException('You are not assigned as an in-charge to any section.');
+    }
+
+    return {
+      sectionId: section.id,
+      sectionName: section.name,
+      students: section.students.map(s => ({
+        id: s.id,
+        users_id: s.users.id,
+        name: s.users.name,
+        photoUrl: s.users.photoUrl,
+        rollNumber: s.rollNumber,
+        isOnLeave: s.leaveRequest.length > 0,
+        leaveReason: s.leaveRequest.length > 0 ? s.leaveRequest[0].reason : null
+      }))
+    };
+  }
 }

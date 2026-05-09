@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, UseGuards, Request, Param } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -22,9 +22,21 @@ export class AttendanceController {
   fetchAttendance(
     @Query('date') date: string,
     @Query('users_id') users_id: string,
+    @Query('section_id') section_id: string,
     @Request() req: any
   ) {
-    return this.attendanceService.fetchAttendance(date, users_id, req.user);
+    return this.attendanceService.fetchAttendance({ date, users_id, section_id }, req.user);
+  }
+
+  @Post('class/:sectionId')
+  @Roles(UserRole.TEACHER)
+  async markClassAttendance(
+    @Param('sectionId') sectionId: string,
+    @Body() createAttendanceDto: CreateAttendanceDto,
+    @Request() req: any
+  ) {
+    await this.attendanceService.validateIncharge(sectionId, req.user);
+    return this.attendanceService.markAttendance(createAttendanceDto, req.user);
   }
 
   @Get('me')

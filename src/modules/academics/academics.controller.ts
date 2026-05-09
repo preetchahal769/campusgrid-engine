@@ -170,4 +170,10 @@ export class AcademicsController {
   ) {
     return this.sectionsService.assignIncharge(id, body.teacherId, req.user);
   }
+
+  @Get('sections/my-class/students')
+  @Roles(UserRole.TEACHER)
+  fetchMyClassStudents(@Request() req: any) {
+    return this.sectionsService.findMyClassStudents(req.user);
+  }
 }
