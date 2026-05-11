@@ -4,6 +4,7 @@ import { CreateAssignmentDto } from './dto/create-assignment.dto';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { UserRole } from '@prisma/client';
 import { StorageService } from '../storage/storage.service';
+import { MessagesService } from '../communications/messages.service';
 
 @Injectable()
 export class AssignmentsService {
@@ -11,6 +12,7 @@ export class AssignmentsService {
     private prisma: PrismaService,
     private analytics: AnalyticsService,
     private storageService: StorageService,
+    private messagesService: MessagesService,
   ) {}
 
   async create(createAssignmentDto: CreateAssignmentDto, currentUser: any, files?: Express.Multer.File[]) {
@@ -63,7 +65,7 @@ export class AssignmentsService {
     }
 
     // 5. Create Assignment
-    return this.prisma.assigment.create({
+    const assignment = await this.prisma.assigment.create({
       data: {
         title,
         description,
@@ -76,14 +78,17 @@ export class AssignmentsService {
           create: dbAttachments
         } : undefined
       },
-      select: {
-        id: true,
-        title: true,
-        attachments: true,
-        subject: { select: { name: true } },
-        section: { select: { name: true } }
-      }
     });
+
+    // 6. Create Assignment Group Chat
+    await this.messagesService.createAssignmentGroup(
+      assignment.id,
+      section_id,
+      currentUser.id,
+      currentUser.School_id
+    );
+
+    return assignment;
   }
 
   async fetchForUser(currentUser: any) {

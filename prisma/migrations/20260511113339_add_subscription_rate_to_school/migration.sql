@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "School" ADD COLUMN     "subscriptionRate" DOUBLE PRECISION NOT NULL DEFAULT 80;

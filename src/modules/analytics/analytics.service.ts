@@ -74,4 +74,95 @@ export class AnalyticsService {
       });
     }
   }
+
+  async getGlobalDashboard() {
+    const [
+      schoolCount,
+      activeSchools,
+      studentCount,
+      teacherCount,
+      recentLogs,
+      schoolStatusGroups,
+      nodesByRegion
+    ] = await Promise.all([
+      this.prisma.school.count(),
+      this.prisma.school.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.users.count({ where: { role: 'STUDENT' } }),
+      this.prisma.users.count({ where: { role: 'TEACHER' } }),
+      this.prisma.auditLog.findMany({
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        include: { user: { select: { name: true, role: true, photoUrl: true } } }
+      }),
+      this.prisma.school.groupBy({
+        by: ['status'],
+        _count: true
+      }),
+      this.prisma.school.groupBy({
+        by: ['region'],
+        _count: true
+      })
+    ]);
+
+    // Calculate 12-month trends
+    const trends = await this.calculateTrends();
+
+    return {
+      stats: {
+        totalSchools: schoolCount,
+        activeSchools,
+        totalStudents: studentCount,
+        totalTeachers: teacherCount
+      },
+      trends,
+      nodesByRegion: nodesByRegion.map(r => ({
+        region: r.region || 'Unknown',
+        count: r._count
+      })),
+      schoolStatusDistribution: schoolStatusGroups,
+      recentActivity: recentLogs.map(log => ({
+        ...log,
+        actorAvatar: log.user.photoUrl
+      }))
+    };
+  }
+
+  private async calculateTrends() {
+    const months: string[] = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push(d.toISOString().substring(0, 7)); // YYYY-MM
+    }
+
+    const trends = await Promise.all(months.map(async (month) => {
+      const startOfMonth = new Date(`${month}-01`);
+      const endOfMonth = new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + 1, 0, 23, 59, 59);
+
+      const [revenue, schools, students] = await Promise.all([
+        this.prisma.schoolSubscription.aggregate({
+          where: { month: month },
+          _sum: { amountPaid: true }
+        }),
+        this.prisma.school.count({
+          where: { createdAt: { lte: endOfMonth } }
+        }),
+        this.prisma.users.count({
+          where: { 
+            role: 'STUDENT',
+            createdAt: { lte: endOfMonth }
+          } as any
+        })
+      ]);
+
+      return {
+        month,
+        revenue: revenue._sum.amountPaid || 0,
+        nodeCount: schools,
+        userCount: students
+      };
+    }));
+
+    return trends;
+  }
 }

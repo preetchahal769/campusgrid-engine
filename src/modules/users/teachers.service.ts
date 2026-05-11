@@ -3,10 +3,14 @@ import { PrismaService } from '../../database/prisma.service';
 import { CreateTeacherProfileDto } from './dto/create-teacher-profile.dto';
 import { AssignTeacherDto } from './dto/assign-teacher.dto';
 import { UserRole } from '@prisma/client';
+import { MessagesService } from '../communications/messages.service';
 
 @Injectable()
 export class TeachersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private messagesService: MessagesService,
+  ) {}
 
   async createProfile(createTeacherProfileDto: CreateTeacherProfileDto, currentUser: any) {
     const { users_id, ...rest } = createTeacherProfileDto;
@@ -93,13 +97,23 @@ export class TeachersService {
       throw new ConflictException('Teacher is already assigned to this subject and section.');
     }
 
-    return this.prisma.teachersubjectsection.create({
+    const assignment = await this.prisma.teachersubjectsection.create({
       data: {
         teachers_id,
         subject_id,
         section_id,
       },
     });
+
+    // Create Subject Group Chat
+    await this.messagesService.createSubjectGroup(
+      subject_id,
+      section_id,
+      teacher.users_id,
+      teacher.School_id
+    );
+
+    return assignment;
   }
 
   async findMyProfile(currentUser: any) {

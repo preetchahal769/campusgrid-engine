@@ -50,6 +50,7 @@ export class TimetableService {
         }
       },
       include: {
+        studioRoom: { select: { roomName: true } },
         teachersubjectsection: {
           include: {
             teachers: { include: { users: { select: { name: true } } } },
@@ -72,6 +73,7 @@ export class TimetableService {
         }
       },
       include: {
+        studioRoom: { select: { roomName: true } },
         teachersubjectsection: {
           include: {
             section: { select: { name: true } },
@@ -83,6 +85,13 @@ export class TimetableService {
         { dayOfWeek: 'asc' },
         { lectureNo: 'asc' }
       ]
+    });
+  }
+
+  async updateStudioAssignment(id: string, studioRoomId: string | null) {
+    return this.prisma.timetable.update({
+      where: { id },
+      data: { studioRoomId },
     });
   }
 }

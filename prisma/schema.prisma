@@ -21,6 +21,7 @@ model assigment {
   teachers    teachers     @relation(fields: [teachers_id], references: [id])
   attachments attachment[]
   submission  submission[]
+  deletedAt   DateTime?
 }
 
 model attachment {
@@ -47,11 +48,13 @@ model broadcast {
 }
 
 model grade {
-  id        String    @id @default(cuid())
-  name      String?
-  School_id String
-  School    School    @relation(fields: [School_id], references: [id])
-  section   section[]
+  id            String    @id @default(cuid())
+  name          String?
+  School_id     String
+  School        School    @relation(fields: [School_id], references: [id])
+  section       section[]
+  feeStructures FeeStructure[]
+  deletedAt     DateTime?
 }
 
 model principal {
@@ -63,6 +66,7 @@ model principal {
   School_id     String
   users_id      String
   users         users     @relation(fields: [users_id], references: [id])
+  deletedAt     DateTime?
 }
 
 model School {
@@ -72,6 +76,12 @@ model School {
   city            String?       @db.VarChar
   pincode         Int?
   education_board String?       @map("education board") @db.VarChar
+  status          SchoolStatus   @default(ACTIVE)
+  region          String?        @db.VarChar
+  subscriptionRate Float         @default(80)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime?      @updatedAt
+  deletedAt       DateTime?
   attendance      attendance[]
   grade           grade[]
   substitution    substitution[]
@@ -80,6 +90,12 @@ model School {
   subject         subject[]
   users           users[]
   leaveRequest    leaveRequest[]
+  exams           Exam[]
+  subscriptions   SchoolSubscription[]
+  feeStructures   FeeStructure[]
+  conversations   Conversation[]
+  academicTerms   AcademicTerm[]
+  schoolEvents    SchoolEvent[]
 }
 
 model section {
@@ -92,6 +108,8 @@ model section {
   students              students[]
   teachersubjectsection teachersubjectsection[]
   classIncharge         teachers?               @relation("ClassIncharge", fields: [classInchargeId], references: [id])
+  examSchedules         ExamSchedule[]
+  deletedAt             DateTime?
 }
 
 model staff {
@@ -105,6 +123,7 @@ model staff {
   users_id       String
   School_id      String
   users          users     @relation(fields: [users_id], references: [id])
+  deletedAt      DateTime?
 }
 
 model students {
@@ -130,6 +149,9 @@ model students {
   users               users        @relation(fields: [users_id], references: [id])
   submission          submission[]
   leaveRequest        leaveRequest[]
+  examResults         ExamResult[]
+  feeBills            StudentFeeBill[]
+  deletedAt           DateTime?
 }
 
 model studioRoomBooking {
@@ -147,10 +169,13 @@ model studioRoomBooking {
 model studioRooms {
   id                String              @id @default(cuid())
   roomName          String?
+  capacity          Int?
+  description       String?
   status            Int?
   hardwareIp        Int?
   School_id         String
   studioRoomBooking studioRoomBooking[]
+  timetable         timetable[]
   School            School              @relation(fields: [School_id], references: [id])
 }
 
@@ -163,6 +188,8 @@ model subject {
   assigment             assigment[]
   School                School                  @relation(fields: [School_id], references: [id])
   teachersubjectsection teachersubjectsection[]
+  examSchedules         ExamSchedule[]
+  deletedAt             DateTime?
 }
 
 model submission {
@@ -177,6 +204,7 @@ model submission {
   assigment     assigment    @relation(fields: [assigment_id], references: [id])
   students      students     @relation(fields: [students_id], references: [id])
   attachments   attachment[]
+  deletedAt     DateTime?
 }
 
 model teachers {
@@ -195,6 +223,8 @@ model teachers {
   teachersubjectsection teachersubjectsection[]
   originalSubstitutions substitution[]         @relation("OriginalTeacher")
   assignedSubstitutions substitution[]         @relation("SubTeacher")
+  sentSwapRequests      StudioRoomSwapRequest[] @relation("FromTeacher")
+  receivedSwapRequests  StudioRoomSwapRequest[] @relation("ToTeacher")
 }
 
 model teachersubjectsection {
@@ -215,10 +245,37 @@ model timetable {
   startTime                 String?
   endTime                   String?
   teachersubjectsection_id  String
+  studioRoomId              String?
   teachersubjectsection     teachersubjectsection @relation(fields: [teachersubjectsection_id], references: [id])
+  studioRoom                studioRooms?          @relation(fields: [studioRoomId], references: [id])
   substitution              substitution[]
+  sentSwapRequests          StudioRoomSwapRequest[] @relation("FromSwap")
+  receivedSwapRequests      StudioRoomSwapRequest[] @relation("ToSwap")
 
   @@unique([dayOfWeek, lectureNo, teachersubjectsection_id])
+}
+
+model StudioRoomSwapRequest {
+  id              String      @id @default(cuid())
+  fromTimetableId String
+  toTimetableId   String?     
+  fromTeacherId   String
+  toTeacherId     String
+  status          RequestStatus @default(PENDING)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  fromTimetable   timetable   @relation("FromSwap", fields: [fromTimetableId], references: [id])
+  toTimetable     timetable?  @relation("ToSwap", fields: [toTimetableId], references: [id])
+  fromTeacher     teachers    @relation("FromTeacher", fields: [fromTeacherId], references: [id])
+  toTeacher       teachers    @relation("ToTeacher", fields: [toTeacherId], references: [id])
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
 }
 
 model substitution {
@@ -239,6 +296,246 @@ model substitution {
   @@unique([date, timetable_id])
 }
 
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String   // e.g., "CREATE", "UPDATE", "DELETE", "LOGIN"
+  module    String   // e.g., "SCHOOLS", "STUDIOS", "EXAMS"
+  severity  LogSeverity @default(INFO)
+  entityId  String?  // The ID of the affected record
+  details   Json?    // Before/After changes or additional info
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user      users    @relation(fields: [userId], references: [id])
+}
+
+enum SchoolStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  DELETED
+}
+
+model SchoolSubscription {
+  id             String             @id @default(cuid())
+  schoolId       String
+  month          String             // Format: YYYY-MM
+  studentCount   Int
+  ratePerStudent Float              @default(80)
+  amountDue      Float
+  amountPaid     Float              @default(0)
+  status         SubscriptionStatus @default(PENDING)
+  invoiceUrl     String?
+  paidAt         DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  deletedAt      DateTime?
+
+  school         School             @relation(fields: [schoolId], references: [id])
+
+  @@unique([schoolId, month])
+}
+
+model FeeStructure {
+  id           String   @id @default(cuid())
+  gradeId      String
+  name         String   
+  amount       Float
+  frequency    String   
+  School_id    String
+  grade        grade    @relation(fields: [gradeId], references: [id])
+  School       School   @relation(fields: [School_id], references: [id])
+
+  @@unique([gradeId, name])
+}
+
+model StudentFeeBill {
+  id           String             @id @default(cuid())
+  studentId    String
+  month        String             
+  amountDue    Float
+  amountPaid   Float              @default(0)
+  status       SubscriptionStatus @default(PENDING) 
+  dueDate      DateTime?
+  paidAt       DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  deletedAt    DateTime?
+
+  student      students           @relation(fields: [studentId], references: [id])
+}
+
+model SalaryStructure {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  baseSalary   Float
+  allowances   Float    @default(0)
+  deductions   Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         users    @relation(fields: [userId], references: [id])
+}
+
+model Payroll {
+  id           String             @id @default(cuid())
+  userId       String
+  month        String             
+  baseSalary   Float
+  allowances   Float
+  deductions   Float
+  netSalary    Float
+  status       SubscriptionStatus @default(PENDING)
+  paidAt       DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  deletedAt    DateTime?
+
+  user         users              @relation(fields: [userId], references: [id])
+
+  @@unique([userId, month])
+}
+
+model Conversation {
+  id            String         @id @default(cuid())
+  type          ConversationType @default(DIRECT)
+  School_id     String?
+  assignmentId  String?
+  subjectId     String?
+  sectionId     String?
+  status        ConversationStatus @default(ACTIVE)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+  
+  participants  ConversationParticipant[]
+  messages      Message[]
+  School        School?        @relation(fields: [School_id], references: [id])
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  userId         String
+  joinedAt       DateTime     @default(now())
+  
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  user           users        @relation(fields: [userId], references: [id])
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String
+  createdAt      DateTime     @default(now())
+  deletedAt      DateTime?
+  
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  sender         users        @relation(fields: [senderId], references: [id])
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+enum ConversationStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum SubscriptionStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model Exam {
+  id          String         @id @default(cuid())
+  title       String
+  term        String         
+  type        ExamType       @default(INTERNAL)
+  School_id   String
+  School      School         @relation(fields: [School_id], references: [id])
+  schedules   ExamSchedule[]
+  deletedAt   DateTime?
+}
+
+model ExamSchedule {
+  id          String       @id @default(cuid())
+  examId      String
+  subjectId   String
+  sectionId   String
+  date        DateTime     @db.Date
+  startTime   String?
+  endTime     String?
+  maxMarks    Int
+  passMarks   Int?
+  exam        Exam         @relation(fields: [examId], references: [id])
+  subject     subject      @relation(fields: [subjectId], references: [id])
+  section     section      @relation(fields: [sectionId], references: [id])
+  results     ExamResult[]
+  deletedAt   DateTime?
+
+  @@unique([examId, subjectId, sectionId])
+}
+
+model ExamResult {
+  id             String       @id @default(cuid())
+  examScheduleId String
+  studentId      String
+  obtainedMarks  Float
+  remarks        String?
+  grade          String?      
+  examSchedule   ExamSchedule @relation(fields: [examScheduleId], references: [id])
+  student        students     @relation(fields: [studentId], references: [id])
+  deletedAt      DateTime?
+
+  @@unique([examScheduleId, studentId])
+}
+
+enum ExamType {
+  INTERNAL
+  EXTERNAL
+  BOARD
+  COMPETITIVE
+}
+
+model AcademicTerm {
+  id        String   @id @default(cuid())
+  name      String   
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  status    String   @default("ACTIVE")
+  School_id String
+  School    School   @relation(fields: [School_id], references: [id])
+  deletedAt DateTime?
+}
+
+model SchoolEvent {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  startDate   DateTime  @db.Date
+  endDate     DateTime? @db.Date
+  type        EventType @default(EVENT)
+  School_id   String
+  deletedAt   DateTime?
+  School      School    @relation(fields: [School_id], references: [id])
+}
+
+enum EventType {
+  HOLIDAY
+  EVENT
+  EXAM_PREP
+  ADMIN_ONLY
+}
+
 model parent {
   id          String   @id @default(cuid())
   users_id    String
@@ -255,6 +552,7 @@ model users {
   email        String?      @unique @db.VarChar
   password     String?      @db.VarChar
   phoneNo      String?      @db.VarChar
+  fcmToken     String?      @db.VarChar
   role         UserRole     @default(STUDENT)
   School_id    String?
   photoUrl     String?      @db.VarChar
@@ -267,8 +565,16 @@ model users {
   staff        staff[]
   students     students[]
   teachers     teachers[]
+  auditLogs    AuditLog[]
   leaveApproved leaveRequest[] @relation("ApprovedLeaves")
   School       School?      @relation(fields: [School_id], references: [id])
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime?    @updatedAt
+  deletedAt    DateTime?
+  salaryStructure SalaryStructure?
+  payrolls     Payroll[]
+  participatingConversations ConversationParticipant[]
+  sentMessages Message[]
 }
 
 model attendance {
@@ -297,7 +603,7 @@ model leaveRequest {
   
   student       students    @relation(fields: [studentId], references: [id])
   approvedBy    users?      @relation("ApprovedLeaves", fields: [approvedById], references: [id])
-  School        School      @relation(fields: [School_id], references: [id])
+  School        School         @relation(fields: [School_id], references: [id])
 }
 
 enum LeaveStatus {
@@ -305,6 +611,12 @@ enum LeaveStatus {
   ESCALATED
   APPROVED
   REJECTED
+}
+
+enum LogSeverity {
+  INFO
+  WARN
+  CRITICAL
 }
 
 enum UserRole {

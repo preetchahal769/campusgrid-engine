@@ -197,6 +197,33 @@ export class UsersService {
     return user;
   }
 
+  async updateFcmToken(userId: string, token: string) {
+    return this.prisma.users.update({
+      where: { id: userId },
+      data: { fcmToken: token }
+    });
+  }
+
+  async searchInSchool(query: string, role: UserRole, currentUser: any) {
+    if (!currentUser.School_id) return [];
+
+    return this.prisma.users.findMany({
+      where: {
+        School_id: currentUser.School_id,
+        role: role,
+        name: { contains: query, mode: 'insensitive' },
+        id: { not: currentUser.id } // Don't find yourself
+      },
+      select: {
+        id: true,
+        name: true,
+        photoUrl: true,
+        role: true
+      },
+      take: 20
+    });
+  }
+
   async findById(id: string) {
     const user = await this.prisma.users.findUnique({
       where: { id },
@@ -221,5 +248,26 @@ export class UsersService {
     }
 
     return user;
+  }
+
+  async findGlobalAdmins() {
+    return this.prisma.users.findMany({
+      where: {
+        role: {
+          in: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL]
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        School: {
+          select: {
+            name: true
+          }
+        }
+      }
+    });
   }
 }

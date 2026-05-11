@@ -4,11 +4,30 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('global')
+  @Roles(UserRole.SUPER_ADMIN)
+  getGlobalAdmins() {
+    return this.usersService.findGlobalAdmins();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('search')
+  searchUsers(
+    @Query('q') query: string,
+    @Query('role') role: UserRole,
+    @Request() req: any
+  ) {
+    return this.usersService.searchInSchool(query, role, req.user);
+  }
 
   @UseGuards(JwtAuthGuard)
   @Post()
@@ -33,6 +52,12 @@ export class UsersController {
   @UseInterceptors(FileInterceptor('file'))
   uploadProfilePhoto(@Request() req: any, @UploadedFile() file: Express.Multer.File) {
     return this.usersService.updateProfilePhoto(req.user.id, file);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('fcm-token')
+  updateFcmToken(@Body('fcmToken') token: string, @Request() req: any) {
+    return this.usersService.updateFcmToken(req.user.id, token);
   }
 
   @UseGuards(JwtAuthGuard)

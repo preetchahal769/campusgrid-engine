@@ -18,6 +18,10 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { ExamsService } from './exams.service';
+import { CalendarService } from './calendar.service';
+import { CreateExamDto, CreateExamScheduleDto, BulkResultSubmitDto } from './dto/exam.dto';
+import { CreateTermDto, CreateEventDto } from './dto/calendar.dto';
 
 @Controller('academics')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -30,6 +34,8 @@ export class AcademicsController {
     private readonly timetableService: TimetableService,
     private readonly leavesService: LeavesService,
     private readonly substitutionsService: SubstitutionsService,
+    private readonly examsService: ExamsService,
+    private readonly calendarService: CalendarService,
   ) {}
 
   @Post('grades')
@@ -135,6 +141,12 @@ export class AcademicsController {
     return this.timetableService.fetchForTeacher(teacherId);
   }
 
+  @Patch('timetable/:id/studio')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL)
+  updateStudioAssignment(@Param('id') id: string, @Body() body: { studioRoomId: string | null }) {
+    return this.timetableService.updateStudioAssignment(id, body.studioRoomId);
+  }
+
   @Post('leaves')
   @Roles(UserRole.STUDENT)
   createLeave(@Body() createLeaveDto: CreateLeaveRequestDto, @Request() req: any) {
@@ -206,5 +218,74 @@ export class AcademicsController {
   @Get('substitutions/active')
   fetchActiveSubstitutions(@Request() req: any) {
     return this.substitutionsService.getActiveSubstitutions(req.user);
+  }
+
+  // --- Exams & Results ---
+
+  @Post('exams')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL)
+  createExam(@Body() dto: CreateExamDto) {
+    return this.examsService.createExam(dto);
+  }
+
+  @Get('exams')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  fetchExams(@Query('schoolId') schoolId: string) {
+    return this.examsService.findAllExams(schoolId);
+  }
+
+  @Post('exams/schedule')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL)
+  scheduleExam(@Body() dto: CreateExamScheduleDto) {
+    return this.examsService.scheduleExam(dto);
+  }
+
+  @Get('exams/:id/schedules')
+  fetchExamSchedules(@Param('id') id: string) {
+    return this.examsService.getSchedulesByExam(id);
+  }
+
+  @Post('exams/results')
+  @Roles(UserRole.TEACHER, UserRole.PRINCIPAL)
+  submitResults(@Body() dto: BulkResultSubmitDto) {
+    return this.examsService.submitResults(dto);
+  }
+
+  @Get('exams/:examId/report-card/:studentId')
+  @Roles(UserRole.STUDENT, UserRole.PARENT, UserRole.TEACHER, UserRole.PRINCIPAL)
+  getReportCard(@Param('examId') examId: string, @Param('studentId') studentId: string) {
+    return this.examsService.getStudentReport(studentId, examId);
+  }
+
+  // --- Calendar: Terms & Events ---
+
+  @Post('terms')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL)
+  createTerm(@Body() dto: CreateTermDto) {
+    return this.calendarService.createTerm(dto);
+  }
+
+  @Get('terms')
+  fetchTerms(@Query('schoolId') schoolId: string) {
+    return this.calendarService.findAllTerms(schoolId);
+  }
+
+  @Post('events')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL)
+  createEvent(@Body() dto: CreateEventDto) {
+    return this.calendarService.createEvent(dto);
+  }
+
+  @Get('events')
+  fetchEvents(
+    @Query('schoolId') schoolId: string,
+    @Query('month') month?: string,
+    @Query('year') year?: string
+  ) {
+    return this.calendarService.findAllEvents(
+      schoolId,
+      month ? parseInt(month) : undefined,
+      year ? parseInt(year) : undefined
+    );
   }
 }
