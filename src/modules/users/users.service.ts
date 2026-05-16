@@ -15,6 +15,7 @@ export class UsersService {
   // Define which roles can create which other roles
   private readonly roleCreationMap: Record<UserRole, UserRole[]> = {
     [UserRole.SUPER_ADMIN]: [
+      UserRole.SUPER_ADMIN,
       UserRole.ADMIN,
       UserRole.MANAGEMENT,
       UserRole.PRINCIPAL,
@@ -268,6 +269,17 @@ export class UsersService {
           }
         }
       }
+    });
+  }
+
+  async resetPassword(userId: string, newPassword?: string) {
+    const password = newPassword || 'Welcome@123';
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    return this.prisma.users.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+      select: { id: true, email: true, name: true }
     });
   }
 }

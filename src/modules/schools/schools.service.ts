@@ -63,7 +63,7 @@ export class SchoolsService {
           city: school.city,
           pincode: school.pincode,
           education_board: school.education_board,
-          subscriptionRate: (school as any).subscriptionRate || 80,
+          subscriptionRate: Number((school as any).subscriptionRate || 80),
         } as any,
       });
 
@@ -122,6 +122,48 @@ export class SchoolsService {
     return school;
   }
 
+  async assignPrincipal(schoolId: string, userId: string, details: { qualification?: string, experienceYears?: number }) {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Update user role and school
+      const user = await tx.users.update({
+        where: { id: userId },
+        data: {
+          role: UserRole.PRINCIPAL,
+          School_id: schoolId,
+        },
+      });
+
+      // 2. Create or update principal profile
+      const existingProfile = await tx.principal.findFirst({
+        where: { users_id: userId }
+      });
+
+      let profile;
+      if (existingProfile) {
+        profile = await tx.principal.update({
+          where: { id: existingProfile.id },
+          data: {
+            School_id: schoolId,
+            qualification: details.qualification,
+            experinceYear: details.experienceYears,
+          },
+        });
+      } else {
+        profile = await tx.principal.create({
+          data: {
+            users_id: userId,
+            School_id: schoolId,
+            qualification: details.qualification || 'N/A',
+            experinceYear: details.experienceYears || 0,
+            joiningDate: new Date(),
+          },
+        });
+      }
+
+      return { user, profile };
+    });
+  }
+
   async remove(id: string, currentUser: any) {
     // Soft delete by setting status to DELETED
     const school = await this.prisma.school.update({
@@ -137,5 +179,43 @@ export class SchoolsService {
     });
 
     return school;
+  }
+
+  async findOne(id: string) {
+    return this.prisma.school.findUnique({
+      where: { id },
+      include: {
+        users: {
+          where: { role: UserRole.PRINCIPAL },
+          include: { principal: true },
+          take: 1
+        },
+        _count: {
+          select: { 
+            users: true,
+            grade: true
+          }
+        }
+      }
+    });
+  }
+
+  async findUsers(schoolId: string, role?: UserRole) {
+    return this.prisma.users.findMany({
+      where: { 
+        School_id: schoolId,
+        ...(role ? { role } : {})
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        phoneNo: true,
+        photoUrl: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
   }
 }

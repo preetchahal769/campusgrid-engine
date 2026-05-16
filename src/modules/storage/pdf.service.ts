@@ -152,4 +152,99 @@ export class PdfService {
       </html>
     `;
   }
+
+  getSubscriptionInvoiceTemplate(data: {
+    invoiceId: string;
+    schoolName: string;
+    month: string;
+    studentCount: number;
+    ratePerStudent: number;
+    amountDue: number;
+    amountPaid: number;
+    paidAt: string;
+  }) {
+    return `
+      <html>
+        <head>
+          <style>
+            body { font-family: 'Inter', 'Helvetica', sans-serif; padding: 50px; color: #1f2937; line-height: 1.5; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e5e7eb; padding-bottom: 30px; }
+            .logo { font-size: 28px; font-weight: 800; color: #4f46e5; letter-spacing: -0.025em; }
+            .invoice-title { font-size: 36px; font-weight: 700; color: #111827; margin-top: 10px; }
+            .meta { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+            .meta-box h3 { font-size: 14px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.05em; margin-bottom: 8px; }
+            .meta-box p { font-size: 16px; font-weight: 500; color: #374151; }
+            .table { width: 100%; margin-top: 50px; border-collapse: collapse; }
+            .table th { background: #f9fafb; text-align: left; padding: 12px 16px; font-size: 13px; font-weight: 600; color: #4b5563; border-bottom: 1px solid #e5e7eb; }
+            .table td { padding: 16px; font-size: 15px; border-bottom: 1px solid #f3f4f6; }
+            .summary { margin-top: 40px; margin-left: auto; width: 300px; }
+            .summary-row { display: flex; justify-content: space-between; padding: 8px 0; }
+            .summary-row.total { border-top: 2px solid #e5e7eb; margin-top: 10px; padding-top: 15px; font-size: 20px; font-weight: 700; color: #111827; }
+            .status-badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; background: #dcfce7; color: #166534; }
+            .footer { margin-top: 80px; text-align: center; font-size: 13px; color: #9ca3af; border-top: 1px solid #f3f4f6; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="logo">CAMPUSGRID</div>
+              <div class="invoice-title">INVOICE</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="status-badge">PAID</div>
+              <p style="margin-top: 10px; font-weight: 600; color: #4b5563;">${data.invoiceId}</p>
+            </div>
+          </div>
+          
+          <div class="meta">
+            <div class="meta-box">
+              <h3>Billed To</h3>
+              <p><strong>${data.schoolName}</strong></p>
+              <p>School Node ID: ${data.invoiceId.split('-').pop()}</p>
+            </div>
+            <div style="text-align: right;" class="meta-box">
+              <h3>Payment Details</h3>
+              <p>Billing Month: ${data.month}</p>
+              <p>Date Paid: ${data.paidAt}</p>
+            </div>
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Service Description</th>
+                <th style="text-align: right;">Student Count</th>
+                <th style="text-align: right;">Rate / Student</th>
+                <th style="text-align: right;">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>CampusGrid Infrastructure & Node Maintenance Subscription</td>
+                <td style="text-align: right;">${data.studentCount}</td>
+                <td style="text-align: right;">₹${data.ratePerStudent}</td>
+                <td style="text-align: right;">₹${data.amountDue}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="summary">
+            <div class="summary-row">
+              <span>Amount Due</span>
+              <span>₹${data.amountDue}</span>
+            </div>
+            <div class="summary-row total">
+              <span>Total Paid</span>
+              <span>₹${data.amountPaid}</span>
+            </div>
+          </div>
+
+          <div class="footer">
+            <p>Thank you for choosing CampusGrid. This is an official receipt for your school node subscription.</p>
+            <p style="margin-top: 5px;">Support: help@campusgrid.com | Website: campusgrid.com</p>
+          </div>
+        </body>
+      </html>
+    `;
+  }
 }

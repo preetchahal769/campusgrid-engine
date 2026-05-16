@@ -15,4 +15,16 @@ export class AnalyticsController {
   getGlobalDashboard() {
     return this.analyticsService.getGlobalDashboard();
   }
+
+  @Get('live-sessions')
+  @Roles(UserRole.SUPER_ADMIN)
+  getLiveSessions() {
+    return this.analyticsService.getLiveSessions();
+  }
+
+  @Get('api-traffic')
+  @Roles(UserRole.SUPER_ADMIN)
+  getApiTraffic() {
+    return this.analyticsService.getApiTraffic();
+  }
 }

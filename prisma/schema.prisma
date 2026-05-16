@@ -96,6 +96,7 @@ model School {
   conversations   Conversation[]
   academicTerms   AcademicTerm[]
   schoolEvents    SchoolEvent[]
+  escalations     Escalation[]
 }
 
 model section {
@@ -319,6 +320,7 @@ enum SchoolStatus {
 
 model SchoolSubscription {
   id             String             @id @default(cuid())
+  invoiceId      String?
   schoolId       String
   month          String             // Format: YYYY-MM
   studentCount   Int
@@ -575,6 +577,8 @@ model users {
   payrolls     Payroll[]
   participatingConversations ConversationParticipant[]
   sentMessages Message[]
+  lastActiveAt DateTime?
+  AcknowledgedEscalations Escalation[] @relation("AcknowledgedEscalations")
 }
 
 model attendance {
@@ -604,6 +608,31 @@ model leaveRequest {
   student       students    @relation(fields: [studentId], references: [id])
   approvedBy    users?      @relation("ApprovedLeaves", fields: [approvedById], references: [id])
   School        School         @relation(fields: [School_id], references: [id])
+}
+
+model Escalation {
+  id             String           @id @default(cuid())
+  schoolId       String
+  title          String
+  description    String?
+  severity       LogSeverity      @default(INFO)
+  status         EscalationStatus @default(UNACKNOWLEDGED)
+  reportedAt     DateTime         @default(now())
+  acknowledgedAt DateTime?
+  acknowledgedBy String?
+
+  school         School           @relation(fields: [schoolId], references: [id])
+  acknowledgedByUser users?       @relation("AcknowledgedEscalations", fields: [acknowledgedBy], references: [id])
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+enum EscalationStatus {
+  UNACKNOWLEDGED
+  ACKNOWLEDGED
+  IN_PROGRESS
+  RESOLVED
 }
 
 enum LeaveStatus {

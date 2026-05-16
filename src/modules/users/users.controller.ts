@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request, Get, Query, Patch, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get, Query, Patch, UseInterceptors, UploadedFile, Param } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -64,5 +64,19 @@ export class UsersController {
   @Get('me')
   getMe(@Request() req: any) {
     return this.usersService.findById(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Post(':id/reset-password')
+  @Roles(UserRole.SUPER_ADMIN)
+  resetPassword(@Param('id') id: string, @Body('password') password?: string) {
+    return this.usersService.resetPassword(id, password);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get(':id')
+  @Roles(UserRole.SUPER_ADMIN)
+  findOne(@Param('id') id: string) {
+    return this.usersService.findById(id);
   }
 }

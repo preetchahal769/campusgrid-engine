@@ -1,7 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, UserRole } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import * as bcrypt from 'bcryptjs';
+import { faker } from '@faker-js/faker';
 import 'dotenv/config';
 
 const connectionString = process.env.DATABASE_URL;
@@ -13,9 +14,9 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   const password = await bcrypt.hash('password123', 10);
 
-  console.log('Seeding database...');
+  console.log('Seeding database with Faker.js...');
 
-  // 1. Company Accounts (No School Association)
+  // 1. Core Global Admins (Keep static so we can log in)
   const superAdmin = await prisma.users.upsert({
     where: { email: 'superadmin@campusgrid.com' },
     update: {},
@@ -40,96 +41,77 @@ async function main() {
   });
   console.log('Company Admin ensured:', companyAdmin.email);
 
-  // 2. School Infrastructure
-  let school = await prisma.school.findFirst({ where: { name: 'Greenwood High' } });
-  if (!school) {
-    school = await prisma.school.create({
+  // 2. Generate 10 Schools
+  for (let i = 0; i < 10; i++) {
+    const schoolName = faker.company.name() + ' High School';
+    // Random creation date between 1 and 12 months ago
+    const schoolCreatedAt = faker.date.past({ years: 1 });
+    
+    const school = await prisma.school.create({
       data: {
-        name: 'Greenwood High',
-        city: 'New York',
-        pincode: 10001,
-        education_board: 'CBSE',
+        name: schoolName,
+        city: faker.location.city(),
+        pincode: parseInt(faker.location.zipCode('#####')),
+        education_board: faker.helpers.arrayElement(['CBSE', 'ICSE', 'State Board']),
+        subscriptionRate: faker.helpers.arrayElement([80, 100, 120]), // Custom rates
+        createdAt: schoolCreatedAt,
       },
     });
-  }
-  console.log('School ensured:', school.name);
+    console.log(`Created School: ${school.name}`);
 
-  let grade = await prisma.grade.findFirst({ where: { name: '10th Grade', School_id: school.id } });
-  if (!grade) {
-    grade = await prisma.grade.create({
-      data: {
-        name: '10th Grade',
-        School_id: school.id,
-      },
+    // Generate Grades & Sections
+    const grade = await prisma.grade.create({
+      data: { name: '10th Grade', School_id: school.id },
     });
-  }
-
-  let section = await prisma.section.findFirst({ where: { name: 'Section A', grade_id: grade.id } });
-  if (!section) {
-    section = await prisma.section.create({
-      data: {
-        name: 'Section A',
-        grade_id: grade.id,
-      },
+    const section = await prisma.section.create({
+      data: { name: 'Section A', grade_id: grade.id },
     });
-  }
 
-  // 3. School-Associated Accounts
-  // Principal
-  let principalUser = await prisma.users.findUnique({ where: { email: 'principal@greenwood.edu' } });
-  if (!principalUser) {
-    principalUser = await prisma.users.create({
+    // Generate Principal
+    await prisma.users.create({
       data: {
-        name: 'Principal Smith',
-        email: 'principal@greenwood.edu',
+        name: faker.person.fullName(),
+        email: `principal.${school.id.slice(-8)}@campusgrid.com`,
         password,
         role: 'PRINCIPAL',
         School_id: school.id,
+        createdAt: faker.date.between({ from: schoolCreatedAt, to: new Date() }),
+        lastActiveAt: faker.date.recent({ days: 1 }), // Random recent activity
         principal: {
-          create: {
-            School_id: school.id,
-          }
+          create: { School_id: school.id }
         }
       },
     });
-  }
-  console.log('Principal ensured:', principalUser.email);
 
-  // Teachers
-  for (let i = 1; i <= 3; i++) {
-    const teacherEmail = `teacher${i}@greenwood.edu`;
-    let teacherUser = await prisma.users.findUnique({ where: { email: teacherEmail } });
-    if (!teacherUser) {
-      teacherUser = await prisma.users.create({
+    // Generate 3 Teachers
+    for (let t = 0; t < 3; t++) {
+      await prisma.users.create({
         data: {
-          name: `Teacher ${i}`,
-          email: teacherEmail,
+          name: faker.person.fullName(),
+          email: `${t}_${school.id.slice(-5)}_${faker.internet.email()}`,
           password,
           role: 'TEACHER',
           School_id: school.id,
+          createdAt: faker.date.between({ from: schoolCreatedAt, to: new Date() }),
+          lastActiveAt: faker.date.recent({ days: 3 }),
           teachers: {
-            create: {
-              School_id: school.id,
-            }
+            create: { School_id: school.id }
           }
         },
       });
-      console.log(`Teacher ${i} created:`, teacherUser.email);
     }
-  }
 
-  // Students
-  for (let i = 1; i <= 5; i++) {
-    const studentEmail = `student${i}@greenwood.edu`;
-    let studentUser = await prisma.users.findUnique({ where: { email: studentEmail } });
-    if (!studentUser) {
-      studentUser = await prisma.users.create({
+    // Generate 50 Students (to make MRR realistic)
+    for (let s = 0; s < 50; s++) {
+      await prisma.users.create({
         data: {
-          name: `Student ${i}`,
-          email: studentEmail,
+          name: faker.person.fullName(),
+          email: `${s}_${school.id.slice(-5)}_${faker.internet.email()}`,
           password,
           role: 'STUDENT',
           School_id: school.id,
+          createdAt: faker.date.between({ from: schoolCreatedAt, to: new Date() }),
+          lastActiveAt: faker.date.recent({ days: 7 }),
           students: {
             create: {
               School_id: school.id,
@@ -138,11 +120,45 @@ async function main() {
           }
         },
       });
-      console.log(`Student ${i} created:`, studentUser.email);
+    }
+
+    // Generate Subscriptions for this school for every month since it was created
+    const startMonth = schoolCreatedAt.getMonth();
+    const startYear = schoolCreatedAt.getFullYear();
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const months: string[] = [];
+    for (let y = startYear; y <= currentYear; y++) {
+      const firstMonth = y === startYear ? startMonth : 0;
+      const lastMonth = y === currentYear ? currentMonth : 11;
+      for (let m = firstMonth; m <= lastMonth; m++) {
+        const monthStr = `${y}-${(m + 1).toString().padStart(2, '0')}`;
+        months.push(monthStr);
+      }
+    }
+
+    for (const month of months) {
+      // 90% chance of being paid to make revenue look healthy
+      const isPaid = faker.number.int({ min: 1, max: 100 }) <= 90;
+      await prisma.schoolSubscription.create({
+        data: {
+          schoolId: school.id,
+          month,
+          studentCount: 50,
+          ratePerStudent: school.subscriptionRate,
+          amountDue: 50 * school.subscriptionRate,
+          amountPaid: isPaid ? (50 * school.subscriptionRate) : 0,
+          status: isPaid ? 'PAID' : 'PENDING',
+          paidAt: isPaid ? faker.date.recent({ days: 15 }) : null,
+          invoiceId: `INV-${month.replace('-', '')}-${school.id.substring(school.id.length - 4).toUpperCase()}`
+        }
+      });
     }
   }
 
-  console.log('Database seeding completed successfully.');
+  console.log('Database seeding with Faker completed successfully.');
 }
 
 main()

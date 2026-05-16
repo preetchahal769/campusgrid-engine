@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
-import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
@@ -10,6 +9,8 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './database/prisma.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { LastActiveInterceptor } from './common/interceptors/last-active.interceptor';
 
 import { UsersModule } from './modules/users/users.module';
 import { AcademicsModule } from './modules/academics/academics.module';
@@ -21,6 +22,8 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { SchoolsModule } from './modules/schools/schools.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { SystemModule } from './modules/system/system.module';
+import { SupportModule } from './modules/support/support.module';
 
 @Module({
   imports: [
@@ -51,10 +54,16 @@ import { AuditModule } from './modules/audit/audit.module';
     StorageModule,
     SchoolsModule,
     AuditModule,
+    SystemModule,
+    SupportModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LastActiveInterceptor,
+    },
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
