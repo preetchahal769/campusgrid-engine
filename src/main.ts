@@ -14,8 +14,9 @@ async function bootstrap() {
   app.use(cookieParser());
   
   // Enable CORS (Cross-Origin Resource Sharing)
+  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'];
   app.enableCors({
-    origin: true, // or your frontend URL
+    origin: allowedOrigins,
     credentials: true,
   });
 

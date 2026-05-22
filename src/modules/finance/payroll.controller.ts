@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Query, UseGuards, Request, Param, Patch, StreamableFile, Res } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, UseGuards, Request, Param, Patch, StreamableFile, Res, ForbiddenException } from '@nestjs/common';
 import { Response } from 'express';
 import { PdfService } from '../storage/pdf.service';
 import { PrismaService } from '../../database/prisma.service';
@@ -8,6 +8,7 @@ import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { SetSalaryStructureDto, GeneratePayrollDto } from './dto/payroll.dto';
+import { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
 
 @Controller('finance/payroll')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -20,30 +21,33 @@ export class PayrollController {
 
   @Post('structure')
   @Roles(UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.SUPER_ADMIN)
-  setStructure(@Body() dto: SetSalaryStructureDto, @Request() req: any) {
+  setStructure(@Body() dto: SetSalaryStructureDto, @Request() req: AuthenticatedRequest) {
     return this.payrollService.setSalaryStructure(dto, req.user);
   }
 
   @Post('generate')
   @Roles(UserRole.ADMIN, UserRole.PRINCIPAL)
-  generatePayroll(@Body() dto: GeneratePayrollDto, @Request() req: any) {
+  generatePayroll(@Body() dto: GeneratePayrollDto, @Request() req: AuthenticatedRequest) {
     return this.payrollService.generateMonthlyPayroll(dto, req.user);
   }
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.PRINCIPAL)
-  findAll(@Query('month') month: string, @Request() req: any) {
+  findAll(@Query('month') month: string, @Request() req: AuthenticatedRequest) {
+    if (!req.user.School_id) {
+      throw new ForbiddenException('User must belong to a school.');
+    }
     return this.payrollService.findAll(req.user.School_id, month);
   }
 
   @Patch(':id/pay')
   @Roles(UserRole.ADMIN, UserRole.PRINCIPAL)
-  markPaid(@Param('id') id: string, @Request() req: any) {
+  markPaid(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.payrollService.markAsPaid(id, req.user);
   }
 
   @Get('my-slips')
-  getMySlips(@Request() req: any) {
+  getMySlips(@Request() req: AuthenticatedRequest) {
     return this.payrollService.findMyPayroll(req.user.id);
   }
 

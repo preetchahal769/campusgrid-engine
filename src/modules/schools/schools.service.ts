@@ -4,6 +4,7 @@ import { CreateSchoolDto, CreateSchoolWithPrincipalDto } from './dto/create-scho
 import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { AuditService } from '../audit/audit.service';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class SchoolsService {
@@ -12,7 +13,7 @@ export class SchoolsService {
     private auditService: AuditService,
   ) {}
 
-  async create(dto: CreateSchoolDto, currentUser: any) {
+  async create(dto: CreateSchoolDto, currentUser: AuthenticatedUser) {
     const school = await this.prisma.school.create({
       data: {
         name: dto.name,
@@ -86,7 +87,7 @@ export class SchoolsService {
           users_id: newUser.id,
           School_id: newSchool.id,
           qualification: principal.qualification,
-          experinceYear: principal.experienceYears,
+          experienceYears: principal.experienceYears,
           joiningDate: new Date(),
         },
       });
@@ -105,7 +106,7 @@ export class SchoolsService {
     });
   }
 
-  async update(id: string, dto: any, currentUser: any) {
+  async update(id: string, dto: any, currentUser: AuthenticatedUser) {
     const school = await this.prisma.school.update({
       where: { id },
       data: dto,
@@ -145,7 +146,7 @@ export class SchoolsService {
           data: {
             School_id: schoolId,
             qualification: details.qualification,
-            experinceYear: details.experienceYears,
+            experienceYears: details.experienceYears,
           },
         });
       } else {
@@ -154,7 +155,7 @@ export class SchoolsService {
             users_id: userId,
             School_id: schoolId,
             qualification: details.qualification || 'N/A',
-            experinceYear: details.experienceYears || 0,
+            experienceYears: details.experienceYears || 0,
             joiningDate: new Date(),
           },
         });
@@ -164,7 +165,7 @@ export class SchoolsService {
     });
   }
 
-  async remove(id: string, currentUser: any) {
+  async remove(id: string, currentUser: AuthenticatedUser) {
     // Soft delete by setting status to DELETED
     const school = await this.prisma.school.update({
       where: { id },

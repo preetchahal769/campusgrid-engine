@@ -8,6 +8,7 @@ import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CreateFeeStructureDto, GenerateFeeBillsDto } from './dto/fee.dto';
+import { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
 
 @Controller('finance/fees')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -20,19 +21,19 @@ export class FeesController {
 
   @Post('structure')
   @Roles(UserRole.ADMIN, UserRole.PRINCIPAL)
-  setStructure(@Body() dto: CreateFeeStructureDto, @Request() req: any) {
+  setStructure(@Body() dto: CreateFeeStructureDto, @Request() req: AuthenticatedRequest) {
     return this.feesService.setFeeStructure(dto, req.user);
   }
 
   @Post('generate-bills')
   @Roles(UserRole.ADMIN, UserRole.PRINCIPAL)
-  generateBills(@Body() dto: GenerateFeeBillsDto, @Request() req: any) {
+  generateBills(@Body() dto: GenerateFeeBillsDto, @Request() req: AuthenticatedRequest) {
     return this.feesService.generateBills(dto, req.user);
   }
 
   @Patch('bills/:id/pay')
   @Roles(UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.STAFF)
-  markPaid(@Param('id') id: string, @Body() body: { amount: number }, @Request() req: any) {
+  markPaid(@Param('id') id: string, @Body() body: { amount: number }, @Request() req: AuthenticatedRequest) {
     return this.feesService.markAsPaid(id, body.amount, req.user);
   }
 

@@ -3,6 +3,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { CreateBroadcastDto, TargetType } from './dto/create-broadcast.dto';
 import { UserRole } from '@prisma/client';
 import { StorageService } from '../storage/storage.service';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class BroadcastsService {
@@ -11,7 +12,7 @@ export class BroadcastsService {
     private storageService: StorageService,
   ) {}
 
-  async create(createBroadcastDto: CreateBroadcastDto, currentUser: any, files?: Express.Multer.File[]) {
+  async create(createBroadcastDto: CreateBroadcastDto, currentUser: AuthenticatedUser, files?: Express.Multer.File[]) {
     const { title, message, target, attachments } = createBroadcastDto;
 
     // 1. Determine Target (Restricted for Teachers/Principals)
@@ -74,7 +75,7 @@ export class BroadcastsService {
     });
   }
 
-  async fetchForUser(currentUser: any) {
+  async fetchForUser(currentUser: AuthenticatedUser) {
     const orConditions: any[] = [
       { targetrole: 'ALL' },
       { targetrole: `ROLE:${currentUser.role}` },
@@ -137,7 +138,7 @@ export class BroadcastsService {
     return broadcasts;
   }
 
-  async getTargetRoles(currentUser: any) {
+  async getTargetRoles(currentUser: AuthenticatedUser) {
     // Only Admin and Super Admin can select target roles.
     // Others (Teachers/Principals) send to the whole school by default.
     if (currentUser.role !== UserRole.ADMIN && currentUser.role !== UserRole.SUPER_ADMIN) {
@@ -156,7 +157,7 @@ export class BroadcastsService {
     return allRoles;
   }
 
-  async findById(id: string, currentUser: any) {
+  async findById(id: string, currentUser: AuthenticatedUser) {
     const broadcast = await this.prisma.broadcast.findUnique({
       where: { id },
       include: {

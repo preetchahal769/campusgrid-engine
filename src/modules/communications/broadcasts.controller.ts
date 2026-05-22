@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
 
 @Controller('communications/broadcasts')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -17,24 +18,24 @@ export class BroadcastsController {
   @UseInterceptors(FilesInterceptor('files'))
   create(
     @Body() createBroadcastDto: CreateBroadcastDto, 
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @UploadedFiles() files?: Express.Multer.File[]
   ) {
     return this.broadcastsService.create(createBroadcastDto, req.user, files);
   }
 
   @Get()
-  fetchForUser(@Request() req: any) {
+  fetchForUser(@Request() req: AuthenticatedRequest) {
     return this.broadcastsService.fetchForUser(req.user);
   }
 
   @Get('target-roles')
-  getTargetRoles(@Request() req: any) {
+  getTargetRoles(@Request() req: AuthenticatedRequest) {
     return this.broadcastsService.getTargetRoles(req.user);
   }
 
   @Get(':id')
-  findById(@Param('id') id: string, @Request() req: any) {
+  findById(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.broadcastsService.findById(id, req.user);
   }
 }

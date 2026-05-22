@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole, AttendanceStatus } from '@prisma/client';
+import { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
 
 @Controller('attendance')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -13,7 +14,7 @@ export class AttendanceController {
 
   @Post()
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
-  markAttendance(@Body() createAttendanceDto: CreateAttendanceDto, @Request() req: any) {
+  markAttendance(@Body() createAttendanceDto: CreateAttendanceDto, @Request() req: AuthenticatedRequest) {
     return this.attendanceService.markAttendance(createAttendanceDto, req.user);
   }
 
@@ -23,7 +24,7 @@ export class AttendanceController {
     @Query('date') date: string,
     @Query('users_id') users_id: string,
     @Query('section_id') section_id: string,
-    @Request() req: any
+    @Request() req: AuthenticatedRequest
   ) {
     return this.attendanceService.fetchAttendance({ date, users_id, section_id }, req.user);
   }
@@ -33,7 +34,7 @@ export class AttendanceController {
   async markClassAttendance(
     @Param('sectionId') sectionId: string,
     @Body() createAttendanceDto: CreateAttendanceDto,
-    @Request() req: any
+    @Request() req: AuthenticatedRequest
   ) {
     await this.attendanceService.validateIncharge(sectionId, req.user);
     return this.attendanceService.markAttendance(createAttendanceDto, req.user);
@@ -44,7 +45,7 @@ export class AttendanceController {
   fetchMyAttendance(
     @Query('month') month: string,
     @Query('year') year: string,
-    @Request() req: any
+    @Request() req: AuthenticatedRequest
   ) {
     return this.attendanceService.fetchMyAttendance(
       req.user, 
@@ -55,7 +56,7 @@ export class AttendanceController {
 
   @Post('me')
   @Roles(UserRole.TEACHER, UserRole.STAFF, UserRole.PRINCIPAL, UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  markSelfAttendance(@Body() body: { status: AttendanceStatus }, @Request() req: any) {
+  markSelfAttendance(@Body() body: { status: AttendanceStatus }, @Request() req: AuthenticatedRequest) {
     return this.attendanceService.markSelfAttendance(req.user, body.status);
   }
 }

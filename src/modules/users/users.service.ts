@@ -1,12 +1,15 @@
-import { Injectable, ForbiddenException, ConflictException } from '@nestjs/common';
+import { Injectable, ForbiddenException, ConflictException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private prisma: PrismaService,
     private storageService: StorageService,
@@ -54,9 +57,9 @@ export class UsersService {
     [UserRole.PARENT]: [],
   };
 
-  async create(createUserDto: CreateUserDto, currentUser: any) {
+  async create(createUserDto: CreateUserDto, currentUser: AuthenticatedUser) {
     const { role: targetRole, email, password, name, phoneNo, School_id } = createUserDto;
-    const currentRole = currentUser.role as UserRole;
+    const currentRole = currentUser.role;
 
     // Check if the current user has permission to create a user with the target role
     const allowedRoles = this.roleCreationMap[currentRole] || [];
@@ -106,7 +109,7 @@ export class UsersService {
     return newUser;
   }
 
-  async findUnassigned(role: UserRole, currentUser: any) {
+  async findUnassigned(role: UserRole, currentUser: AuthenticatedUser) {
     if (role !== UserRole.STUDENT && role !== UserRole.TEACHER) {
       throw new ConflictException('Only STUDENT or TEACHER roles are supported for unassigned filter.');
     }
@@ -179,7 +182,7 @@ export class UsersService {
       try {
         await this.storageService.deleteFile(currentUser.photoUrl);
       } catch (error) {
-        console.error(`Failed to delete old profile photo: ${currentUser.photoUrl}`, error);
+        this.logger.error(`Failed to delete old profile photo: ${currentUser.photoUrl}`, error);
         // We continue anyway so the new upload isn't blocked
       }
     }
@@ -205,7 +208,7 @@ export class UsersService {
     });
   }
 
-  async searchInSchool(query: string, role: UserRole, currentUser: any) {
+  async searchInSchool(query: string, role: UserRole, currentUser: AuthenticatedUser) {
     if (!currentUser.School_id) return [];
 
     return this.prisma.users.findMany({

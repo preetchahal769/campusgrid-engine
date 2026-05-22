@@ -4,7 +4,11 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 
-export const jwtSecret = process.env.JWT_SECRET || 'super-secret-default';
+const secret = process.env.JWT_SECRET;
+if (!secret) {
+  throw new Error('FATAL: JWT_SECRET environment variable is not defined.');
+}
+export const jwtSecret = secret;
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {

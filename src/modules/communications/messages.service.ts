@@ -1,19 +1,22 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Injectable, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { StartConversationDto, CreateMessageDto } from './dto/message.dto';
 import { UserRole, ConversationStatus, ConversationType } from '@prisma/client';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class MessagesService {
+  private readonly logger = new Logger(MessagesService.name);
+
   constructor(
     private prisma: PrismaService,
     @InjectQueue('message-delivery') private deliveryQueue: Queue,
   ) {}
 
-  async startConversation(dto: StartConversationDto, currentUser: any) {
+  async startConversation(dto: StartConversationDto, currentUser: AuthenticatedUser) {
     const participantIds = Array.from(new Set([...dto.participantIds, currentUser.id]));
 
     // Check if direct conversation already exists
@@ -103,18 +106,18 @@ export class MessagesService {
     });
 
     for (const conv of expiredConversations) {
-      const assignment = await this.prisma.assigment.findUnique({
+      const assignment = await this.prisma.assignment.findUnique({
         where: { id: conv.assignmentId! }
       });
 
       if (assignment && assignment.dueDate && assignment.dueDate < now) {
         await this.archiveConversation(conv.id);
-        console.log(`Archived conversation ${conv.id} for expired assignment ${assignment.id}`);
+        this.logger.log(`Archived conversation ${conv.id} for expired assignment ${assignment.id}`);
       }
     }
   }
 
-  async sendMessage(dto: CreateMessageDto, currentUser: any) {
+  async sendMessage(dto: CreateMessageDto, currentUser: AuthenticatedUser) {
     // 1. Verify participant
     const isParticipant = await this.prisma.conversationParticipant.findUnique({
       where: {
@@ -146,8 +149,8 @@ export class MessagesService {
     return message;
   }
 
-  async getConversations(user: any) {
-    const isAdmin = [UserRole.SUPER_ADMIN, UserRole.ADMIN].includes(user.role);
+  async getConversations(user: AuthenticatedUser) {
+    const isAdmin = user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN;
 
     return this.prisma.conversation.findMany({
       where: {

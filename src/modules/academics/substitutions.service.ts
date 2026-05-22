@@ -1,6 +1,7 @@
 import { Injectable, ForbiddenException, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { UserRole, AttendanceStatus } from '@prisma/client';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class SubstitutionsService {
@@ -9,7 +10,11 @@ export class SubstitutionsService {
   /**
    * 1. Fetch all teachers who are absent or on leave today
    */
-  async findAbsentTeachers(currentUser: any) {
+  async findAbsentTeachers(currentUser: AuthenticatedUser) {
+    if (!currentUser.School_id) {
+      throw new ForbiddenException('User must belong to a school.');
+    }
+
     if (currentUser.role !== UserRole.PRINCIPAL && currentUser.role !== UserRole.ADMIN && currentUser.role !== UserRole.SUPER_ADMIN) {
       throw new ForbiddenException('Only Principal or Admin can access absent teacher data.');
     }
@@ -70,7 +75,11 @@ export class SubstitutionsService {
   /**
    * 2. Fetch available teachers for substitution (those who don't have a class in a specific slot)
    */
-  async findAvailableTeachers(lectureNo: number, dayOfWeek: string, currentUser: any) {
+  async findAvailableTeachers(lectureNo: number, dayOfWeek: string, currentUser: AuthenticatedUser) {
+    if (!currentUser.School_id) {
+      throw new ForbiddenException('User must belong to a school.');
+    }
+
     // 1. Get all teachers in school
     const allTeachers = await this.prisma.teachers.findMany({
       where: { School_id: currentUser.School_id },
@@ -102,12 +111,17 @@ export class SubstitutionsService {
    * 3. Assign a replacement teacher to a specific slot
    */
   async assignReplacement(data: {
+    // 1. Verify timetable entry exists
     date: string;
     timetableId: string;
     subTeacherId: string;
     role?: string;
     message?: string;
-  }, currentUser: any) {
+  }, currentUser: AuthenticatedUser) {
+    if (!currentUser.School_id) {
+      throw new ForbiddenException('User must belong to a school.');
+    }
+
     const { date, timetableId, subTeacherId, role, message } = data;
     const subDate = new Date(date);
     subDate.setHours(0, 0, 0, 0);
@@ -149,7 +163,11 @@ export class SubstitutionsService {
   /**
    * 4. Get active substitutions for today
    */
-  async getActiveSubstitutions(currentUser: any) {
+  async getActiveSubstitutions(currentUser: AuthenticatedUser) {
+    if (!currentUser.School_id) {
+      throw new ForbiddenException('User must belong to a school.');
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 

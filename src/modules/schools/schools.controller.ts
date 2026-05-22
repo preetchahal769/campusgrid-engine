@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { SchoolSubscriptionsService } from '../finance/school-subscriptions.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
 
 @Controller('schools')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -19,7 +20,7 @@ export class SchoolsController {
 
   @Post()
   @Roles(UserRole.SUPER_ADMIN)
-  create(@Body() createSchoolDto: CreateSchoolDto, @Request() req: any) {
+  create(@Body() createSchoolDto: CreateSchoolDto, @Request() req: AuthenticatedRequest) {
     return this.schoolsService.create(createSchoolDto, req.user);
   }
 
@@ -73,20 +74,20 @@ export class SchoolsController {
   updateStatus(
     @Param('id') id: string,
     @Body() body: { status: 'ACTIVE' | 'INACTIVE' | 'DELETED' },
-    @Request() req: any
+    @Request() req: AuthenticatedRequest
   ) {
     return this.schoolsService.update(id, { status: body.status }, req.user);
   }
 
   @Patch(':id')
   @Roles(UserRole.SUPER_ADMIN)
-  update(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+  update(@Param('id') id: string, @Body() body: any, @Request() req: AuthenticatedRequest) {
     return this.schoolsService.update(id, body, req.user);
   }
 
   @Delete(':id')
   @Roles(UserRole.SUPER_ADMIN)
-  remove(@Param('id') id: string, @Request() req: any) {
+  remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.schoolsService.remove(id, req.user);
   }
 }

@@ -5,6 +5,7 @@ import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto, ForgotPasswordDto } from './dto/password-mgmt.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
 
 @Controller('auth')
 export class AuthController {
@@ -16,13 +17,13 @@ export class AuthController {
     const result = await this.authService.login(loginDto.email, loginDto.password);
     
     this.setTokens(res, result.access_token, result.refresh_token);
-
+ 
     return { user: result.user };
   }
 
   @Public()
   @Post('refresh')
-  async refresh(@Request() req: any, @Res({ passthrough: true }) res: Response) {
+  async refresh(@Request() req: AuthenticatedRequest, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies['refresh_token'];
     if (!refreshToken) throw new UnauthorizedException('No refresh token provided');
 
@@ -33,7 +34,7 @@ export class AuthController {
   }
 
   @Post('logout')
-  async logout(@Request() req: any, @Res({ passthrough: true }) res: Response) {
+  async logout(@Request() req: AuthenticatedRequest, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies['refresh_token'];
     if (refreshToken && req.user) {
       await this.authService.logout(req.user.id, refreshToken);
@@ -65,7 +66,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
-  changePassword(@Body() changePasswordDto: ChangePasswordDto, @Request() req: any) {
+  changePassword(@Body() changePasswordDto: ChangePasswordDto, @Request() req: AuthenticatedRequest) {
     return this.authService.changePassword(
       req.user.id,
       changePasswordDto.oldPassword,

@@ -22,6 +22,7 @@ import { ExamsService } from './exams.service';
 import { CalendarService } from './calendar.service';
 import { CreateExamDto, CreateExamScheduleDto, BulkResultSubmitDto } from './dto/exam.dto';
 import { CreateTermDto, CreateEventDto } from './dto/calendar.dto';
+import { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
 
 @Controller('academics')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -40,37 +41,37 @@ export class AcademicsController {
 
   @Post('grades')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
-  createGrade(@Body() createGradeDto: CreateGradeDto, @Request() req: any) {
+  createGrade(@Body() createGradeDto: CreateGradeDto, @Request() req: AuthenticatedRequest) {
     return this.gradesService.create(createGradeDto, req.user);
   }
 
   @Get('grades')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
-  fetchGrades(@Request() req: any) {
+  fetchGrades(@Request() req: AuthenticatedRequest) {
     return this.gradesService.findAll(req.user);
   }
 
   @Post('sections')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
-  createSection(@Body() createSectionDto: CreateSectionDto, @Request() req: any) {
+  createSection(@Body() createSectionDto: CreateSectionDto, @Request() req: AuthenticatedRequest) {
     return this.sectionsService.create(createSectionDto, req.user);
   }
 
   @Get('sections')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
-  fetchSections(@Request() req: any) {
+  fetchSections(@Request() req: AuthenticatedRequest) {
     return this.sectionsService.findAll(req.user);
   }
 
   @Post('subjects')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
-  createSubject(@Body() createSubjectDto: CreateSubjectDto, @Request() req: any) {
+  createSubject(@Body() createSubjectDto: CreateSubjectDto, @Request() req: AuthenticatedRequest) {
     return this.subjectsService.create(createSubjectDto, req.user);
   }
 
   @Get('subjects')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
-  fetchSubjects(@Request() req: any) {
+  fetchSubjects(@Request() req: AuthenticatedRequest) {
     return this.subjectsService.findAll(req.user);
   }
 
@@ -79,20 +80,20 @@ export class AcademicsController {
   @UseInterceptors(FilesInterceptor('files'))
   createAssignment(
     @Body() createAssignmentDto: CreateAssignmentDto, 
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @UploadedFiles() files?: Express.Multer.File[]
   ) {
     return this.assignmentsService.create(createAssignmentDto, req.user, files);
   }
 
   @Get('assignments')
-  fetchAssignments(@Request() req: any) {
+  fetchAssignments(@Request() req: AuthenticatedRequest) {
     return this.assignmentsService.fetchForUser(req.user);
   }
 
   @Get('assignments/allowed-contexts')
   @Roles(UserRole.TEACHER)
-  getAllowedContexts(@Request() req: any) {
+  getAllowedContexts(@Request() req: AuthenticatedRequest) {
     return this.assignmentsService.getAllowedContexts(req.user);
   }
 
@@ -102,32 +103,32 @@ export class AcademicsController {
   submitAssignment(
     @Param('id') id: string, 
     @Body() submissionDto: { content?: string }, 
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @UploadedFiles() files?: Express.Multer.File[]
   ) {
     return this.assignmentsService.submit(id, submissionDto, req.user, files);
   }
 
   @Get('assignments/:id')
-  fetchAssignmentDetail(@Param('id') id: string, @Request() req: any) {
+  fetchAssignmentDetail(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.assignmentsService.findById(id, req.user);
   }
 
   @Get('assignments/:id/submissions')
   @Roles(UserRole.TEACHER, UserRole.PRINCIPAL, UserRole.ADMIN)
-  fetchAssignmentSubmissions(@Param('id') id: string, @Request() req: any) {
+  fetchAssignmentSubmissions(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.assignmentsService.fetchSubmissions(id, req.user);
   }
 
   @Post('submissions/:id/grade')
   @Roles(UserRole.TEACHER)
-  gradeSubmission(@Param('id') id: string, @Body() gradeDto: { marks: number }, @Request() req: any) {
+  gradeSubmission(@Param('id') id: string, @Body() gradeDto: { marks: number }, @Request() req: AuthenticatedRequest) {
     return this.assignmentsService.grade(id, gradeDto.marks, req.user);
   }
 
   @Post('timetable')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL)
-  createTimetable(@Body() body: CreateBulkTimetableDto, @Request() req: any) {
+  createTimetable(@Body() body: CreateBulkTimetableDto, @Request() req: AuthenticatedRequest) {
     return this.timetableService.createBulk(body, req.user);
   }
 
@@ -149,13 +150,13 @@ export class AcademicsController {
 
   @Post('leaves')
   @Roles(UserRole.STUDENT)
-  createLeave(@Body() createLeaveDto: CreateLeaveRequestDto, @Request() req: any) {
+  createLeave(@Body() createLeaveDto: CreateLeaveRequestDto, @Request() req: AuthenticatedRequest) {
     return this.leavesService.create(createLeaveDto, req.user);
   }
 
   @Get('leaves')
   @Roles(UserRole.STUDENT, UserRole.TEACHER, UserRole.PRINCIPAL, UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  fetchLeaves(@Request() req: any) {
+  fetchLeaves(@Request() req: AuthenticatedRequest) {
     return this.leavesService.findAll(req.user);
   }
 
@@ -164,14 +165,14 @@ export class AcademicsController {
   updateLeaveStatus(
     @Param('id') id: string,
     @Body() updateDto: UpdateLeaveStatusDto,
-    @Request() req: any
+    @Request() req: AuthenticatedRequest
   ) {
     return this.leavesService.updateStatus(id, updateDto, req.user);
   }
 
   @Post('leaves/:id/escalate')
   @Roles(UserRole.STUDENT)
-  escalateLeave(@Param('id') id: string, @Request() req: any) {
+  escalateLeave(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.leavesService.escalate(id, req.user);
   }
 
@@ -180,14 +181,14 @@ export class AcademicsController {
   assignSectionIncharge(
     @Param('id') id: string,
     @Body() body: { teacherId: string },
-    @Request() req: any
+    @Request() req: AuthenticatedRequest
   ) {
     return this.sectionsService.assignIncharge(id, body.teacherId, req.user);
   }
 
   @Get('sections/my-class/students')
   @Roles(UserRole.TEACHER)
-  fetchMyClassStudents(@Request() req: any) {
+  fetchMyClassStudents(@Request() req: AuthenticatedRequest) {
     return this.sectionsService.findMyClassStudents(req.user);
   }
 
@@ -195,7 +196,7 @@ export class AcademicsController {
 
   @Get('substitutions/absent-teachers')
   @Roles(UserRole.PRINCIPAL, UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  fetchAbsentTeachers(@Request() req: any) {
+  fetchAbsentTeachers(@Request() req: AuthenticatedRequest) {
     return this.substitutionsService.findAbsentTeachers(req.user);
   }
 
@@ -204,19 +205,19 @@ export class AcademicsController {
   fetchAvailableTeachers(
     @Query('lectureNo') lectureNo: string,
     @Query('dayOfWeek') dayOfWeek: string,
-    @Request() req: any
+    @Request() req: AuthenticatedRequest
   ) {
     return this.substitutionsService.findAvailableTeachers(parseInt(lectureNo), dayOfWeek, req.user);
   }
 
   @Post('substitutions/assign')
   @Roles(UserRole.PRINCIPAL, UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  assignReplacement(@Body() body: any, @Request() req: any) {
+  assignReplacement(@Body() body: any, @Request() req: AuthenticatedRequest) {
     return this.substitutionsService.assignReplacement(body, req.user);
   }
 
   @Get('substitutions/active')
-  fetchActiveSubstitutions(@Request() req: any) {
+  fetchActiveSubstitutions(@Request() req: AuthenticatedRequest) {
     return this.substitutionsService.getActiveSubstitutions(req.user);
   }
 

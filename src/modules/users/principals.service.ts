@@ -2,12 +2,13 @@ import { Injectable, ForbiddenException, NotFoundException, ConflictException } 
 import { PrismaService } from '../../database/prisma.service';
 import { CreatePrincipalProfileDto } from './dto/create-principal-profile.dto';
 import { UserRole } from '@prisma/client';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class PrincipalsService {
   constructor(private prisma: PrismaService) {}
 
-  async createProfile(createPrincipalProfileDto: CreatePrincipalProfileDto, currentUser: any) {
+  async createProfile(createPrincipalProfileDto: CreatePrincipalProfileDto, currentUser: AuthenticatedUser) {
     const { users_id, ...rest } = createPrincipalProfileDto;
     let targetSchoolId = createPrincipalProfileDto.School_id;
 
@@ -37,14 +38,14 @@ export class PrincipalsService {
         users_id,
         School_id: targetSchoolId as string,
         qualification: rest.qualification,
-        experinceYear: rest.experinceYear,
+        experienceYears: rest.experienceYears,
         joiningDate: rest.joiningDate ? new Date(rest.joiningDate) : undefined,
         signatureUrl: rest.signatureUrl,
       },
     });
   }
 
-  async findMyProfile(currentUser: any) {
+  async findMyProfile(currentUser: AuthenticatedUser) {
     const profile = await this.prisma.principal.findFirst({
       where: { users_id: currentUser.id },
       include: {

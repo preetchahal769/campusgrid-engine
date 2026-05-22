@@ -15,7 +15,7 @@ export class CreatePrincipalProfileDto {
 
   @IsOptional()
   @IsInt()
-  experinceYear?: number;
+  experienceYears?: number;
 
   @IsOptional()
   @IsDateString()

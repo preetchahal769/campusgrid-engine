@@ -4,6 +4,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole, SubscriptionStatus } from '@prisma/client';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
 
 @Controller('finance/subscriptions')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -12,13 +13,13 @@ export class SchoolSubscriptionsController {
 
   @Post('process-monthly')
   @Roles(UserRole.SUPER_ADMIN)
-  processMonthly(@Body() body: { month: string }, @Request() req: any) {
+  processMonthly(@Body() body: { month: string }, @Request() req: AuthenticatedRequest) {
     return this.subService.generateMonthlyBills(body.month, req.user);
   }
 
   @Post('generate')
   @Roles(UserRole.SUPER_ADMIN)
-  generateBills(@Body() body: { month: string }, @Request() req: any) {
+  generateBills(@Body() body: { month: string }, @Request() req: AuthenticatedRequest) {
     return this.subService.generateMonthlyBills(body.month, req.user);
   }
 
@@ -42,7 +43,7 @@ export class SchoolSubscriptionsController {
   markAsPaid(
     @Param('id') id: string,
     @Body() body: { amount: number },
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.subService.markAsPaid(id, body.amount, req.user);
   }
@@ -52,14 +53,14 @@ export class SchoolSubscriptionsController {
   update(
     @Param('id') id: string,
     @Body() body: any,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.subService.update(id, body, req.user);
   }
 
   @Get('my-bills')
   @Roles(UserRole.PRINCIPAL, UserRole.ADMIN)
-  getMyBills(@Request() req: any) {
+  getMyBills(@Request() req: AuthenticatedRequest) {
     return this.subService.findAll({ schoolId: req.user.School_id });
   }
 }

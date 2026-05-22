@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
 
 @Controller('users')
 export class UsersController {
@@ -24,45 +25,45 @@ export class UsersController {
   searchUsers(
     @Query('q') query: string,
     @Query('role') role: UserRole,
-    @Request() req: any
+    @Request() req: AuthenticatedRequest
   ) {
     return this.usersService.searchInSchool(query, role, req.user);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Body() createUserDto: CreateUserDto, @Request() req: any) {
+  create(@Body() createUserDto: CreateUserDto, @Request() req: AuthenticatedRequest) {
     return this.usersService.create(createUserDto, req.user);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('unassigned')
-  findUnassigned(@Query('role') role: UserRole, @Request() req: any) {
+  findUnassigned(@Query('role') role: UserRole, @Request() req: AuthenticatedRequest) {
     return this.usersService.findUnassigned(role, req.user);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('profile')
-  updateProfile(@Body() updateProfileDto: UpdateProfileDto, @Request() req: any) {
+  updateProfile(@Body() updateProfileDto: UpdateProfileDto, @Request() req: AuthenticatedRequest) {
     return this.usersService.updateProfile(req.user.id, updateProfileDto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('profile/photo')
   @UseInterceptors(FileInterceptor('file'))
-  uploadProfilePhoto(@Request() req: any, @UploadedFile() file: Express.Multer.File) {
+  uploadProfilePhoto(@Request() req: AuthenticatedRequest, @UploadedFile() file: Express.Multer.File) {
     return this.usersService.updateProfilePhoto(req.user.id, file);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('fcm-token')
-  updateFcmToken(@Body('fcmToken') token: string, @Request() req: any) {
+  updateFcmToken(@Body('fcmToken') token: string, @Request() req: AuthenticatedRequest) {
     return this.usersService.updateFcmToken(req.user.id, token);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  getMe(@Request() req: any) {
+  getMe(@Request() req: AuthenticatedRequest) {
     return this.usersService.findById(req.user.id);
   }
 

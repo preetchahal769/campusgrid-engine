@@ -3,6 +3,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { CreateFeeStructureDto, GenerateFeeBillsDto } from './dto/fee.dto';
 import { SubscriptionStatus } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class FeesService {
@@ -11,7 +12,7 @@ export class FeesService {
     private auditService: AuditService,
   ) {}
 
-  async setFeeStructure(dto: CreateFeeStructureDto, currentUser: any) {
+  async setFeeStructure(dto: CreateFeeStructureDto, currentUser: AuthenticatedUser) {
     const structure = await this.prisma.feeStructure.upsert({
       where: {
         gradeId_name: {
@@ -37,7 +38,7 @@ export class FeesService {
     return structure;
   }
 
-  async generateBills(dto: GenerateFeeBillsDto, currentUser: any) {
+  async generateBills(dto: GenerateFeeBillsDto, currentUser: AuthenticatedUser) {
     const { month, gradeId } = dto;
 
     // 1. Get all students in this grade
@@ -86,7 +87,7 @@ export class FeesService {
     return results;
   }
 
-  async markAsPaid(billId: string, amount: number, currentUser: any) {
+  async markAsPaid(billId: string, amount: number, currentUser: AuthenticatedUser) {
     const bill = await this.prisma.studentFeeBill.update({
       where: { id: billId },
       data: {

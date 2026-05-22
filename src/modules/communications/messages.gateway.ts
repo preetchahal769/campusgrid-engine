@@ -7,12 +7,15 @@ import {
 import { Server, Socket } from 'socket.io';
 import * as jwt from 'jsonwebtoken';
 import { ConfigService } from '@nestjs/config';
+import { Logger } from '@nestjs/common';
 
 @WebSocketGateway({
   cors: { origin: '*' },
   namespace: 'chat',
 })
 export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  private readonly logger = new Logger(MessagesGateway.name);
+
   @WebSocketServer()
   server: Server;
 
@@ -25,7 +28,7 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
       let token = client.handshake.auth?.token;
       
       if (!token) {
-        console.log('[Socket] Connection rejected: No token provided.');
+        this.logger.log('[Socket] Connection rejected: No token provided.');
         client.disconnect();
         return;
       }
@@ -42,13 +45,13 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
       if (userId) {
         this.connectedUsers.set(userId, client.id);
         client.join(userId);
-        console.log(`[Socket] User authenticated: ${userId}`);
+        this.logger.log(`[Socket] User authenticated: ${userId}`);
       } else {
-        console.log('[Socket] Connection rejected: Token missing user payload.');
+        this.logger.log('[Socket] Connection rejected: Token missing user payload.');
         client.disconnect();
       }
     } catch (error) {
-      console.log(`[Socket] Connection rejected: ${error.message}`);
+      this.logger.log(`[Socket] Connection rejected: ${error.message}`);
       client.disconnect();
     }
   }
@@ -57,7 +60,7 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
     for (const [userId, socketId] of this.connectedUsers.entries()) {
       if (socketId === client.id) {
         this.connectedUsers.delete(userId);
-        console.log(`[Socket] User disconnected: ${userId}`);
+        this.logger.log(`[Socket] User disconnected: ${userId}`);
         break;
       }
     }

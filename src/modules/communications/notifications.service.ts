@@ -1,9 +1,10 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as admin from 'firebase-admin';
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {
+  private readonly logger = new Logger(NotificationsService.name);
   private initialized = false;
 
   constructor(private configService: ConfigService) {}
@@ -22,9 +23,9 @@ export class NotificationsService implements OnModuleInit {
         }),
       });
       this.initialized = true;
-      console.log('Firebase Admin initialized successfully.');
+      this.logger.log('Firebase Admin initialized successfully.');
     } else {
-      console.warn('Firebase credentials missing. Notifications will not be sent.');
+      this.logger.warn('Firebase credentials missing. Notifications will not be sent.');
     }
   }
 
@@ -40,7 +41,7 @@ export class NotificationsService implements OnModuleInit {
 
       await admin.messaging().send(message);
     } catch (error) {
-      console.error('Error sending FCM notification:', error);
+      this.logger.error('Error sending FCM notification:', error);
     }
   }
 }

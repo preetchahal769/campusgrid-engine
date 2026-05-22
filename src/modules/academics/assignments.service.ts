@@ -5,6 +5,7 @@ import { AnalyticsService } from '../analytics/analytics.service';
 import { UserRole } from '@prisma/client';
 import { StorageService } from '../storage/storage.service';
 import { MessagesService } from '../communications/messages.service';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class AssignmentsService {
@@ -15,10 +16,14 @@ export class AssignmentsService {
     private messagesService: MessagesService,
   ) {}
 
-  async create(createAssignmentDto: CreateAssignmentDto, currentUser: any, files?: Express.Multer.File[]) {
+  async create(createAssignmentDto: CreateAssignmentDto, currentUser: AuthenticatedUser, files?: Express.Multer.File[]) {
     // 1. Ensure user is a Teacher
     if (currentUser.role !== UserRole.TEACHER) {
       throw new ForbiddenException('Only teachers can create assignments.');
+    }
+
+    if (!currentUser.School_id) {
+      throw new ForbiddenException('Teacher must belong to a school.');
     }
 
     // 2. Get Teacher Profile ID
@@ -65,7 +70,7 @@ export class AssignmentsService {
     }
 
     // 5. Create Assignment
-    const assignment = await this.prisma.assigment.create({
+    const assignment = await this.prisma.assignment.create({
       data: {
         title,
         description,
@@ -91,7 +96,7 @@ export class AssignmentsService {
     return assignment;
   }
 
-  async fetchForUser(currentUser: any) {
+  async fetchForUser(currentUser: AuthenticatedUser) {
     let assignments: any[] = [];
 
     if (currentUser.role === UserRole.STUDENT) {
@@ -101,7 +106,7 @@ export class AssignmentsService {
 
       if (!studentProfile) return [];
 
-      assignments = await this.prisma.assigment.findMany({
+      assignments = await this.prisma.assignment.findMany({
         where: { section_id: studentProfile.section_id },
         select: {
           id: true,
@@ -122,7 +127,7 @@ export class AssignmentsService {
               id: true, 
               status: true, 
               submittedAt: true, 
-              obatinedmarks: true, 
+              obtainedMarks: true, 
               fileUrl: true,
               attachments: true 
             }
@@ -138,7 +143,7 @@ export class AssignmentsService {
 
       if (!teacherProfile) return [];
 
-      assignments = await this.prisma.assigment.findMany({
+      assignments = await this.prisma.assignment.findMany({
         where: { teachers_id: teacherProfile.id },
         select: {
           id: true,
@@ -156,7 +161,7 @@ export class AssignmentsService {
     } else {
       if (!currentUser.School_id) return [];
 
-      assignments = await this.prisma.assigment.findMany({
+      assignments = await this.prisma.assignment.findMany({
         where: {
           section: {
             grade: { School_id: currentUser.School_id }
@@ -223,7 +228,7 @@ export class AssignmentsService {
     return transformedAssignments;
   }
 
-  async getAllowedContexts(currentUser: any) {
+  async getAllowedContexts(currentUser: AuthenticatedUser) {
     if (currentUser.role !== UserRole.TEACHER) {
       throw new ForbiddenException('Only teachers can access allowed assignment contexts.');
     }
@@ -256,7 +261,7 @@ export class AssignmentsService {
     });
   }
 
-  async submit(assignmentId: string, submissionDto: { content?: string }, currentUser: any, files?: Express.Multer.File[]) {
+  async submit(assignmentId: string, submissionDto: { content?: string }, currentUser: AuthenticatedUser, files?: Express.Multer.File[]) {
     if (currentUser.role !== UserRole.STUDENT) {
       throw new ForbiddenException('Only students can submit assignments.');
     }
@@ -270,7 +275,7 @@ export class AssignmentsService {
     }
 
     // Check if assignment exists and belongs to student's section
-    const assignment = await this.prisma.assigment.findUnique({
+    const assignment = await this.prisma.assignment.findUnique({
       where: { id: assignmentId }
     });
 
@@ -285,7 +290,7 @@ export class AssignmentsService {
     // 3. Check for existing submission to prevent duplicates
     const existingSubmission = await this.prisma.submission.findFirst({
       where: {
-        assigment_id: assignmentId,
+        assignment_id: assignmentId,
         students_id: studentProfile.id
       }
     });
@@ -313,7 +318,7 @@ export class AssignmentsService {
         content: submissionDto.content,
         submittedAt: new Date(),
         status: 'SUBMITTED',
-        assigment_id: assignmentId,
+        assignment_id: assignmentId,
         students_id: studentProfile.id,
         attachments: dbAttachments.length > 0 ? {
           create: dbAttachments
@@ -322,12 +327,12 @@ export class AssignmentsService {
     });
   }
 
-  async grade(submissionId: string, marks: number, currentUser: any) {
+  async grade(submissionId: string, marks: number, currentUser: AuthenticatedUser) {
     // 1. Fetch the submission to verify existence and get the student/assignment context
     const submission = await this.prisma.submission.findUnique({
       where: { id: submissionId },
       include: {
-        assigment: true,
+        assignment: true,
         students: { select: { School_id: true, users_id: true } }
       }
     });
@@ -343,7 +348,7 @@ export class AssignmentsService {
     const updatedSubmission = await this.prisma.submission.update({
       where: { id: submissionId },
       data: {
-        obatinedmarks: marks,
+        obtainedMarks: marks,
         status: 'GRADED'
       }
     });
@@ -354,8 +359,8 @@ export class AssignmentsService {
     return updatedSubmission;
   }
 
-  async findById(id: string, currentUser: any) {
-    const assignment = await this.prisma.assigment.findUnique({
+  async findById(id: string, currentUser: AuthenticatedUser) {
+    const assignment = await this.prisma.assignment.findUnique({
       where: { id },
       include: {
         attachments: true,
@@ -381,14 +386,14 @@ export class AssignmentsService {
     return assignment;
   }
 
-  async fetchSubmissions(assignmentId: string, currentUser: any) {
+  async fetchSubmissions(assignmentId: string, currentUser: AuthenticatedUser) {
     // 1. Ensure user is Teacher or Admin
     if (currentUser.role === UserRole.STUDENT) {
       throw new ForbiddenException('Students cannot view all submissions.');
     }
 
     const submissions = await this.prisma.submission.findMany({
-      where: { assigment_id: assignmentId },
+      where: { assignment_id: assignmentId },
       include: {
         students: {
           select: {

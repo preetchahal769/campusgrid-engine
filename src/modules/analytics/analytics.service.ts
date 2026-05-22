@@ -24,10 +24,10 @@ export class AnalyticsService {
     const submissions = await this.prisma.submission.findMany({
       where: { 
         students_id: { in: profileIds },
-        obatinedmarks: { not: null }
+        obtainedMarks: { not: null }
       },
       include: {
-        assigment: { select: { maxMarks: true } }
+        assignment: { select: { maxMarks: true } }
       }
     });
 
@@ -38,8 +38,8 @@ export class AnalyticsService {
     let count = 0;
 
     for (const sub of submissions) {
-      if (sub.assigment.maxMarks && sub.assigment.maxMarks > 0) {
-        const percentage = (sub.obatinedmarks! / sub.assigment.maxMarks) * 100;
+      if (sub.assignment.maxMarks && sub.assignment.maxMarks > 0) {
+        const percentage = (sub.obtainedMarks! / sub.assignment.maxMarks) * 100;
         totalPercentage += percentage;
         count++;
       }
@@ -233,7 +233,7 @@ export class AnalyticsService {
         return { month, count };
       })),
       // Teacher Activity (Assignments)
-      this.prisma.assigment.count({
+      this.prisma.assignment.count({
         where: {
           subject: { School_id: schoolId }
         }

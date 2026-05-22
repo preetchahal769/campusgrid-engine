@@ -4,6 +4,7 @@ import { CreateTeacherProfileDto } from './dto/create-teacher-profile.dto';
 import { AssignTeacherDto } from './dto/assign-teacher.dto';
 import { UserRole } from '@prisma/client';
 import { MessagesService } from '../communications/messages.service';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class TeachersService {
@@ -12,7 +13,7 @@ export class TeachersService {
     private messagesService: MessagesService,
   ) {}
 
-  async createProfile(createTeacherProfileDto: CreateTeacherProfileDto, currentUser: any) {
+  async createProfile(createTeacherProfileDto: CreateTeacherProfileDto, currentUser: AuthenticatedUser) {
     const { users_id, ...rest } = createTeacherProfileDto;
     let targetSchoolId = createTeacherProfileDto.School_id;
 
@@ -43,14 +44,14 @@ export class TeachersService {
         School_id: targetSchoolId as string,
         qualification: rest.qualification,
         specilization: rest.specilization,
-        Experince: rest.Experince,
+        experience: rest.experience,
         monthlySalary: rest.monthlySalary,
         joiningDate: rest.joiningDate ? new Date(rest.joiningDate) : undefined,
       },
     });
   }
 
-  async assignSubjectAndSection(assignTeacherDto: AssignTeacherDto, currentUser: any) {
+  async assignSubjectAndSection(assignTeacherDto: AssignTeacherDto, currentUser: AuthenticatedUser) {
     const { teachers_id, subject_id, section_id } = assignTeacherDto;
 
     // Fetch the teacher profile
@@ -116,7 +117,7 @@ export class TeachersService {
     return assignment;
   }
 
-  async findMyProfile(currentUser: any) {
+  async findMyProfile(currentUser: AuthenticatedUser) {
     const profile = await this.prisma.teachers.findFirst({
       where: { users_id: currentUser.id },
       include: {
@@ -137,7 +138,7 @@ export class TeachersService {
     return profile;
   }
 
-  async findAll(currentUser: any) {
+  async findAll(currentUser: AuthenticatedUser) {
     const whereClause: any = {};
     if (currentUser.role !== UserRole.SUPER_ADMIN) {
       if (!currentUser.School_id) {

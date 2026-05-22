@@ -6,7 +6,7 @@ datasource db {
   provider = "postgresql"
 }
 
-model assigment {
+model Assignment {
   id          String       @id @default(cuid())
   title       String?
   description String?
@@ -22,6 +22,8 @@ model assigment {
   attachments attachment[]
   submission  submission[]
   deletedAt   DateTime?
+
+  @@map("assigment")
 }
 
 model attachment {
@@ -30,9 +32,9 @@ model attachment {
   filetype      String?
   filename      String?
   broadcast_id  String?
-  assigment_id  String?
+  assignment_id String?     @map("assigment_id")
   submission_id String?
-  assigment     assigment?  @relation(fields: [assigment_id], references: [id])
+  assignment    Assignment? @relation(fields: [assignment_id], references: [id])
   broadcast     broadcast?  @relation(fields: [broadcast_id], references: [id])
   submission    submission? @relation(fields: [submission_id], references: [id])
 }
@@ -58,11 +60,11 @@ model grade {
 }
 
 model principal {
-  id            String    @id @default(cuid())
-  qualification String?   @db.VarChar
-  experinceYear Int?
-  joiningDate   DateTime? @db.Date
-  signatureUrl  String?   @db.VarChar
+  id              String    @id @default(cuid())
+  qualification   String?   @db.VarChar
+  experienceYears Int?      @map("experinceYear")
+  joiningDate     DateTime? @db.Date
+  signatureUrl    String?   @db.VarChar
   School_id     String
   users_id      String
   users         users     @relation(fields: [users_id], references: [id])
@@ -75,7 +77,7 @@ model School {
   rankingPoint    Int?
   city            String?       @db.VarChar
   pincode         Int?
-  education_board String?       @map("education board") @db.VarChar
+  educationBoard  String?       @map("education board") @db.VarChar
   status          SchoolStatus   @default(ACTIVE)
   region          String?        @db.VarChar
   subscriptionRate Float         @default(80)
@@ -104,7 +106,7 @@ model section {
   name                  String?
   grade_id              String
   classInchargeId       String?                 @unique
-  assigment             assigment[]
+  assignments           Assignment[]
   grade                 grade                   @relation(fields: [grade_id], references: [id])
   students              students[]
   teachersubjectsection teachersubjectsection[]
@@ -117,8 +119,8 @@ model staff {
   id             String    @id @default(cuid())
   department     String?   @db.VarChar
   joiningDate    DateTime? @db.Date
-  Experince      String?
-  monthly_salary Int?      @map("monthly salary")
+  experience     String?   @map("Experince")
+  monthlySalary  Int?      @map("monthly salary")
   licenseNumber  Int?
   assignedArea   String?   @db.VarChar
   users_id       String
@@ -140,8 +142,8 @@ model students {
   users_id            String
   School_id           String
   section_id          String
-  discount_percentage Int?         @default(0) @map("discount percentage")
-  monthly_fee         Int?         @map("monthly fee")
+  discountPercentage  Int?         @default(0) @map("discount percentage")
+  monthlyFee          Int?         @map("monthly fee")
   status              EnrollmentStatus @default(ACTIVE)
   enrolledAt          DateTime         @default(now())
   transferredAt       DateTime?
@@ -186,7 +188,7 @@ model subject {
   type                  String?                 @db.VarChar
   code                  String?                 @db.VarChar
   School_id             String
-  assigment             assigment[]
+  assignments           Assignment[]
   School                School                  @relation(fields: [School_id], references: [id])
   teachersubjectsection teachersubjectsection[]
   examSchedules         ExamSchedule[]
@@ -198,11 +200,11 @@ model submission {
   content       String?
   fileUrl       String?
   status        String?
-  obatinedmarks Int?
+  obtainedMarks Int?         @map("obatinedmarks")
   submittedAt   DateTime?    @db.Date
-  assigment_id  String
+  assignment_id String       @map("assigment_id")
   students_id   String
-  assigment     assigment    @relation(fields: [assigment_id], references: [id])
+  assignment    Assignment   @relation(fields: [assignment_id], references: [id])
   students      students     @relation(fields: [students_id], references: [id])
   attachments   attachment[]
   deletedAt     DateTime?
@@ -213,11 +215,11 @@ model teachers {
   qualification         String?                 @db.VarChar
   specilization         String?                 @db.VarChar
   joiningDate           DateTime?               @db.Date
-  Experince             String?
+  experience            String?                 @map("Experince")
   monthlySalary         Int?
   users_id              String
   School_id             String
-  assigment             assigment[]
+  assignments           Assignment[]
   inchargeOf            section?                @relation("ClassIncharge")
   studioRoomBooking     studioRoomBooking[]
   users                 users                   @relation(fields: [users_id], references: [id])

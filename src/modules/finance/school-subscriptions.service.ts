@@ -1,13 +1,16 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { SubscriptionStatus } from '@prisma/client';
+import { SubscriptionStatus, UserRole } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { PdfService } from '../storage/pdf.service';
 import { StorageService } from '../storage/storage.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class SchoolSubscriptionsService {
+  private readonly logger = new Logger(SchoolSubscriptionsService.name);
+
   constructor(
     private prisma: PrismaService,
     private auditService: AuditService,
@@ -21,16 +24,16 @@ export class SchoolSubscriptionsService {
   @Cron(CronExpression.EVERY_1ST_DAY_OF_MONTH_AT_MIDNIGHT)
   async handleAutoMonthlyBilling() {
     const month = new Date().toISOString().substring(0, 7); // YYYY-MM
-    console.log(`[Cron] Auto-generating bills for ${month}`);
+    this.logger.log(`[Cron] Auto-generating bills for ${month}`);
     // System user ID or a placeholder for system actions
-    await this.generateMonthlyBills(month, { id: 'SYSTEM', role: 'SYSTEM' });
+    await this.generateMonthlyBills(month, { id: 'SYSTEM', email: 'system@campusgrid.org', role: UserRole.SUPER_ADMIN });
   }
 
   /**
    * Generates bills for all schools for a specific month.
    * Logic: Count students * 80 RS.
    */
-  async generateMonthlyBills(month?: string, currentUser?: any) {
+  async generateMonthlyBills(month: string | undefined, currentUser: AuthenticatedUser) {
     const targetMonth = month || new Date().toISOString().substring(0, 7);
     
     const schools = await this.prisma.school.findMany({
@@ -87,7 +90,7 @@ export class SchoolSubscriptionsService {
     return results;
   }
 
-  async markAsPaid(subscriptionId: string, amount: number, currentUser: any) {
+  async markAsPaid(subscriptionId: string, amount: number, currentUser: AuthenticatedUser) {
     // Try to find by id or invoiceId
     const sub = await this.prisma.schoolSubscription.findFirst({
       where: {
@@ -150,7 +153,7 @@ export class SchoolSubscriptionsService {
     return updated;
   }
 
-  async update(id: string, data: any, currentUser: any) {
+  async update(id: string, data: any, currentUser: AuthenticatedUser) {
     const updated = await this.prisma.schoolSubscription.update({
       where: { id },
       data: {

@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { SetSalaryStructureDto, GeneratePayrollDto } from './dto/payroll.dto';
 import { SubscriptionStatus, UserRole } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class PayrollService {
@@ -11,7 +12,7 @@ export class PayrollService {
     private auditService: AuditService,
   ) {}
 
-  async setSalaryStructure(dto: SetSalaryStructureDto, currentUser: any) {
+  async setSalaryStructure(dto: SetSalaryStructureDto, currentUser: AuthenticatedUser) {
     const targetUser = await this.prisma.users.findUnique({ where: { id: dto.userId } });
     if (!targetUser) throw new NotFoundException('Staff/Teacher not found');
     
@@ -46,8 +47,11 @@ export class PayrollService {
     return structure;
   }
 
-  async generateMonthlyPayroll(dto: GeneratePayrollDto, currentUser: any) {
+  async generateMonthlyPayroll(dto: GeneratePayrollDto, currentUser: AuthenticatedUser) {
     const { month } = dto;
+    if (!currentUser.School_id) {
+      throw new ForbiddenException('User must belong to a school.');
+    }
     const schoolId = currentUser.School_id;
 
     // 1. Get all users in the school who have a salary structure defined
@@ -102,7 +106,7 @@ export class PayrollService {
     return results;
   }
 
-  async markAsPaid(payrollId: string, currentUser: any) {
+  async markAsPaid(payrollId: string, currentUser: AuthenticatedUser) {
     const payroll = await this.prisma.payroll.update({
       where: { id: payrollId },
       data: {
