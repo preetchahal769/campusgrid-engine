@@ -1,25 +1,68 @@
 import { Injectable } from '@nestjs/common';
-import * as puppeteer from 'puppeteer';
+import { PDFDocument, rgb, StandardFonts, PDFFont, PDFPage } from 'pdf-lib';
+
+class PDFHelper {
+  private y: number = 780;
+  constructor(private page: PDFPage, private fonts: { regular: PDFFont; bold: PDFFont }) {}
+
+  moveDown(points: number) {
+    this.y -= points;
+  }
+
+  getY() {
+    return this.y;
+  }
+
+  setY(val: number) {
+    this.y = val;
+  }
+
+  drawText(text: string, options: { x: number; size: number; isBold?: boolean; color?: any }) {
+    this.page.drawText(text, {
+      x: options.x,
+      y: this.y,
+      size: options.size,
+      font: options.isBold ? this.fonts.bold : this.fonts.regular,
+      color: options.color || rgb(31/255, 41/255, 55/255),
+    });
+  }
+
+  drawRightAlignedText(text: string, options: { x: number; size: number; isBold?: boolean; color?: any }) {
+    const font = options.isBold ? this.fonts.bold : this.fonts.regular;
+    const textWidth = font.widthOfTextAtSize(text, options.size);
+    this.page.drawText(text, {
+      x: options.x - textWidth,
+      y: this.y,
+      size: options.size,
+      font,
+      color: options.color || rgb(31/255, 41/255, 55/255),
+    });
+  }
+
+  drawLine(options: { thickness?: number; color?: any; margin?: number }) {
+    const margin = options.margin || 40;
+    this.page.drawLine({
+      start: { x: margin, y: this.y },
+      end: { x: 595.28 - margin, y: this.y },
+      thickness: options.thickness || 1,
+      color: options.color || rgb(229/255, 231/255, 235/255),
+    });
+  }
+
+  drawTableHeaderBg(x: number, width: number, height: number = 22) {
+    this.page.drawRectangle({
+      x,
+      y: this.y - 6,
+      width,
+      height,
+      color: rgb(249/255, 250/255, 251/255),
+    });
+  }
+}
 
 @Injectable()
 export class PdfService {
-  async generatePdf(html: string): Promise<Buffer> {
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    const pdf = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
-    });
-    await browser.close();
-    return Buffer.from(pdf);
-  }
-
-  getFeeReceiptTemplate(data: {
+  async generateFeeReceipt(data: {
     schoolName: string;
     studentName: string;
     rollNo: string;
@@ -27,62 +70,75 @@ export class PdfService {
     month: string;
     amount: number;
     paidAt: string;
-  }) {
-    return `
-      <html>
-        <head>
-          <style>
-            body { font-family: 'Helvetica', sans-serif; padding: 40px; color: #333; }
-            .header { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 20px; }
-            .title { font-size: 24px; font-weight: bold; color: #1a73e8; }
-            .receipt-info { margin-top: 30px; display: flex; justify-content: space-between; }
-            .details { margin-top: 40px; width: 100%; border-collapse: collapse; }
-            .details th, .details td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
-            .total { margin-top: 30px; text-align: right; font-size: 20px; font-weight: bold; }
-            .footer { margin-top: 100px; text-align: center; font-size: 12px; color: #888; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="title">${data.schoolName}</div>
-            <p>Fee Payment Receipt</p>
-          </div>
-          <div class="receipt-info">
-            <div>
-              <strong>Student:</strong> ${data.studentName}<br>
-              <strong>Roll No:</strong> ${data.rollNo}
-            </div>
-            <div style="text-align: right;">
-              <strong>Receipt No:</strong> ${data.billId}<br>
-              <strong>Date:</strong> ${data.paidAt}
-            </div>
-          </div>
-          <table class="details">
-            <thead>
-              <tr>
-                <th>Description</th>
-                <th>Month</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Academic Fees</td>
-                <td>${data.month}</td>
-                <td>₹${data.amount}</td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="total">Total Paid: ₹${data.amount}</div>
-          <div class="footer">
-            This is a computer-generated receipt and does not require a physical signature.
-          </div>
-        </body>
-      </html>
-    `;
+  }): Promise<Buffer> {
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([595.28, 841.89]);
+    const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    
+    const helper = new PDFHelper(page, { regular: fontRegular, bold: fontBold });
+    
+    // Header
+    helper.setY(760);
+    helper.drawText(data.schoolName, { x: 40, size: 24, isBold: true, color: rgb(26/255, 115/255, 232/255) });
+    helper.moveDown(22);
+    helper.drawText('Fee Payment Receipt', { x: 40, size: 12, color: rgb(107/255, 114/255, 128/255) });
+    
+    helper.moveDown(18);
+    helper.drawLine({});
+    
+    // Info Block
+    helper.moveDown(30);
+    const startY = helper.getY();
+    helper.drawText(`Student: ${data.studentName}`, { x: 40, size: 11, isBold: true });
+    helper.moveDown(18);
+    helper.drawText(`Roll No: ${data.rollNo}`, { x: 40, size: 11 });
+    
+    helper.setY(startY);
+    helper.drawRightAlignedText(`Receipt No: ${data.billId}`, { x: 555.28 - 40, size: 11, isBold: true });
+    helper.moveDown(18);
+    helper.drawRightAlignedText(`Date: ${data.paidAt}`, { x: 555.28 - 40, size: 11 });
+    
+    // Table
+    helper.moveDown(40);
+    helper.drawTableHeaderBg(40, 515.28);
+    helper.drawText('Description', { x: 50, size: 10, isBold: true, color: rgb(75/255, 85/255, 99/255) });
+    helper.drawText('Month', { x: 300, size: 10, isBold: true, color: rgb(75/255, 85/255, 99/255) });
+    helper.drawRightAlignedText('Amount', { x: 555.28 - 50, size: 10, isBold: true, color: rgb(75/255, 85/255, 99/255) });
+    
+    helper.moveDown(22);
+    helper.drawLine({});
+    
+    helper.moveDown(20);
+    helper.drawText('Academic Fees', { x: 50, size: 11 });
+    helper.drawText(data.month, { x: 300, size: 11 });
+    helper.drawRightAlignedText(`Rs. ${data.amount}`, { x: 555.28 - 50, size: 11 });
+    
+    helper.moveDown(20);
+    helper.drawLine({});
+    
+    // Total
+    helper.moveDown(35);
+    helper.drawRightAlignedText(`Total Paid: Rs. ${data.amount}`, { x: 555.28 - 50, size: 16, isBold: true });
+    
+    // Footer
+    helper.setY(100);
+    helper.drawLine({});
+    helper.moveDown(20);
+    const footerText = 'This is a computer-generated receipt and does not require a physical signature.';
+    const textWidth = fontRegular.widthOfTextAtSize(footerText, 9);
+    page.drawText(footerText, {
+      x: (595.28 - textWidth) / 2,
+      y: helper.getY(),
+      size: 9,
+      font: fontRegular,
+      color: rgb(156/255, 163/255, 175/255),
+    });
+    
+    return Buffer.from(await pdfDoc.save());
   }
 
-  getSalarySlipTemplate(data: {
+  async generateSalarySlip(data: {
     schoolName: string;
     staffName: string;
     role: string;
@@ -92,68 +148,81 @@ export class PdfService {
     deductions: number;
     net: number;
     paidAt: string;
-  }) {
-    return `
-      <html>
-        <head>
-          <style>
-            body { font-family: 'Helvetica', sans-serif; padding: 40px; color: #333; }
-            .header { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 20px; }
-            .title { font-size: 24px; font-weight: bold; color: #d93025; }
-            .info { margin-top: 30px; display: flex; justify-content: space-between; }
-            .table { margin-top: 40px; width: 100%; border-collapse: collapse; }
-            .table th, .table td { padding: 12px; border: 1px solid #eee; text-align: left; }
-            .net { background: #f8f9fa; font-weight: bold; }
-            .footer { margin-top: 100px; text-align: center; font-size: 12px; color: #888; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="title">${data.schoolName}</div>
-            <p>Salary Slip - ${data.month}</p>
-          </div>
-          <div class="info">
-            <div>
-              <strong>Employee:</strong> ${data.staffName}<br>
-              <strong>Designation:</strong> ${data.role}
-            </div>
-            <div style="text-align: right;">
-              <strong>Date Paid:</strong> ${data.paidAt}
-            </div>
-          </div>
-          <table class="table">
-            <tr>
-              <th>Earnings</th>
-              <th>Amount</th>
-              <th>Deductions</th>
-              <th>Amount</th>
-            </tr>
-            <tr>
-              <td>Basic Salary</td>
-              <td>₹${data.base}</td>
-              <td>Taxes / Other</td>
-              <td>₹${data.deductions}</td>
-            </tr>
-            <tr>
-              <td>Allowances</td>
-              <td>₹${data.allowances}</td>
-              <td></td>
-              <td></td>
-            </tr>
-            <tr class="net">
-              <td colspan="3">Net Salary Disbursed</td>
-              <td>₹${data.net}</td>
-            </tr>
-          </table>
-          <div class="footer">
-            Generated by CampusGrid Engine on ${new Date().toLocaleDateString()}
-          </div>
-        </body>
-      </html>
-    `;
+  }): Promise<Buffer> {
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([595.28, 841.89]);
+    const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    
+    const helper = new PDFHelper(page, { regular: fontRegular, bold: fontBold });
+    
+    // Header
+    helper.setY(760);
+    helper.drawText(data.schoolName, { x: 40, size: 24, isBold: true, color: rgb(217/255, 48/255, 37/255) });
+    helper.moveDown(22);
+    helper.drawText(`Salary Slip - ${data.month}`, { x: 40, size: 12, color: rgb(107/255, 114/255, 128/255) });
+    
+    helper.moveDown(18);
+    helper.drawLine({});
+    
+    // Info Block
+    helper.moveDown(30);
+    const startY = helper.getY();
+    helper.drawText(`Employee: ${data.staffName}`, { x: 40, size: 11, isBold: true });
+    helper.moveDown(18);
+    helper.drawText(`Designation: ${data.role}`, { x: 40, size: 11 });
+    
+    helper.setY(startY);
+    helper.drawRightAlignedText(`Date Paid: ${data.paidAt}`, { x: 555.28 - 40, size: 11 });
+    
+    // Table
+    helper.moveDown(40);
+    helper.drawTableHeaderBg(40, 515.28);
+    helper.drawText('Earnings', { x: 50, size: 10, isBold: true, color: rgb(75/255, 85/255, 99/255) });
+    helper.drawRightAlignedText('Amount', { x: 250, size: 10, isBold: true, color: rgb(75/255, 85/255, 99/255) });
+    helper.drawText('Deductions', { x: 300, size: 10, isBold: true, color: rgb(75/255, 85/255, 99/255) });
+    helper.drawRightAlignedText('Amount', { x: 555.28 - 50, size: 10, isBold: true, color: rgb(75/255, 85/255, 99/255) });
+    
+    helper.moveDown(22);
+    helper.drawLine({});
+    
+    helper.moveDown(20);
+    helper.drawText('Basic Salary', { x: 50, size: 11 });
+    helper.drawRightAlignedText(`Rs. ${data.base}`, { x: 250, size: 11 });
+    helper.drawText('Taxes / Other', { x: 300, size: 11 });
+    helper.drawRightAlignedText(`Rs. ${data.deductions}`, { x: 555.28 - 50, size: 11 });
+    
+    helper.moveDown(20);
+    helper.drawText('Allowances', { x: 50, size: 11 });
+    helper.drawRightAlignedText(`Rs. ${data.allowances}`, { x: 250, size: 11 });
+    
+    helper.moveDown(20);
+    helper.drawLine({});
+    
+    // Net Salary Row
+    helper.moveDown(20);
+    helper.drawTableHeaderBg(40, 515.28);
+    helper.drawText('Net Salary Disbursed', { x: 50, size: 11, isBold: true });
+    helper.drawRightAlignedText(`Rs. ${data.net}`, { x: 555.28 - 50, size: 11, isBold: true });
+    
+    // Footer
+    helper.setY(100);
+    helper.drawLine({});
+    helper.moveDown(20);
+    const footerText = `Generated by CampusGrid Engine on ${new Date().toLocaleDateString()}`;
+    const textWidth = fontRegular.widthOfTextAtSize(footerText, 9);
+    page.drawText(footerText, {
+      x: (595.28 - textWidth) / 2,
+      y: helper.getY(),
+      size: 9,
+      font: fontRegular,
+      color: rgb(156/255, 163/255, 175/255),
+    });
+    
+    return Buffer.from(await pdfDoc.save());
   }
 
-  getSubscriptionInvoiceTemplate(data: {
+  async generateSubscriptionInvoice(data: {
     invoiceId: string;
     schoolName: string;
     month: string;
@@ -162,89 +231,120 @@ export class PdfService {
     amountDue: number;
     amountPaid: number;
     paidAt: string;
-  }) {
-    return `
-      <html>
-        <head>
-          <style>
-            body { font-family: 'Inter', 'Helvetica', sans-serif; padding: 50px; color: #1f2937; line-height: 1.5; }
-            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e5e7eb; padding-bottom: 30px; }
-            .logo { font-size: 28px; font-weight: 800; color: #4f46e5; letter-spacing: -0.025em; }
-            .invoice-title { font-size: 36px; font-weight: 700; color: #111827; margin-top: 10px; }
-            .meta { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-            .meta-box h3 { font-size: 14px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.05em; margin-bottom: 8px; }
-            .meta-box p { font-size: 16px; font-weight: 500; color: #374151; }
-            .table { width: 100%; margin-top: 50px; border-collapse: collapse; }
-            .table th { background: #f9fafb; text-align: left; padding: 12px 16px; font-size: 13px; font-weight: 600; color: #4b5563; border-bottom: 1px solid #e5e7eb; }
-            .table td { padding: 16px; font-size: 15px; border-bottom: 1px solid #f3f4f6; }
-            .summary { margin-top: 40px; margin-left: auto; width: 300px; }
-            .summary-row { display: flex; justify-content: space-between; padding: 8px 0; }
-            .summary-row.total { border-top: 2px solid #e5e7eb; margin-top: 10px; padding-top: 15px; font-size: 20px; font-weight: 700; color: #111827; }
-            .status-badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; background: #dcfce7; color: #166534; }
-            .footer { margin-top: 80px; text-align: center; font-size: 13px; color: #9ca3af; border-top: 1px solid #f3f4f6; padding-top: 20px; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div>
-              <div class="logo">CAMPUSGRID</div>
-              <div class="invoice-title">INVOICE</div>
-            </div>
-            <div style="text-align: right;">
-              <div class="status-badge">PAID</div>
-              <p style="margin-top: 10px; font-weight: 600; color: #4b5563;">${data.invoiceId}</p>
-            </div>
-          </div>
-          
-          <div class="meta">
-            <div class="meta-box">
-              <h3>Billed To</h3>
-              <p><strong>${data.schoolName}</strong></p>
-              <p>School Node ID: ${data.invoiceId.split('-').pop()}</p>
-            </div>
-            <div style="text-align: right;" class="meta-box">
-              <h3>Payment Details</h3>
-              <p>Billing Month: ${data.month}</p>
-              <p>Date Paid: ${data.paidAt}</p>
-            </div>
-          </div>
-
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Service Description</th>
-                <th style="text-align: right;">Student Count</th>
-                <th style="text-align: right;">Rate / Student</th>
-                <th style="text-align: right;">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>CampusGrid Infrastructure & Node Maintenance Subscription</td>
-                <td style="text-align: right;">${data.studentCount}</td>
-                <td style="text-align: right;">₹${data.ratePerStudent}</td>
-                <td style="text-align: right;">₹${data.amountDue}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div class="summary">
-            <div class="summary-row">
-              <span>Amount Due</span>
-              <span>₹${data.amountDue}</span>
-            </div>
-            <div class="summary-row total">
-              <span>Total Paid</span>
-              <span>₹${data.amountPaid}</span>
-            </div>
-          </div>
-
-          <div class="footer">
-            <p>Thank you for choosing CampusGrid. This is an official receipt for your school node subscription.</p>
-            <p style="margin-top: 5px;">Support: help@campusgrid.com | Website: campusgrid.com</p>
-          </div>
-        </body>
-      </html>
-    `;
+  }): Promise<Buffer> {
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([595.28, 841.89]);
+    const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    
+    const helper = new PDFHelper(page, { regular: fontRegular, bold: fontBold });
+    
+    // Header
+    helper.setY(760);
+    helper.drawText('CAMPUSGRID', { x: 40, size: 24, isBold: true, color: rgb(79/255, 70/255, 229/255) });
+    helper.moveDown(26);
+    helper.drawText('INVOICE', { x: 40, size: 30, isBold: true });
+    
+    // Paid Badge & Invoice ID
+    helper.setY(760);
+    page.drawRectangle({
+      x: 555.28 - 40 - 55,
+      y: helper.getY() - 4,
+      width: 55,
+      height: 18,
+      color: rgb(220/255, 252/255, 231/255),
+    });
+    page.drawText('PAID', {
+      x: 555.28 - 40 - 40,
+      y: helper.getY(),
+      size: 10,
+      font: fontBold,
+      color: rgb(22/255, 101/255, 52/255),
+    });
+    
+    helper.moveDown(24);
+    helper.drawRightAlignedText(data.invoiceId, { x: 555.28 - 40, size: 12, isBold: true, color: rgb(75/255, 85/255, 99/255) });
+    
+    helper.moveDown(22);
+    helper.drawLine({});
+    
+    // Billed To / Payment Details
+    helper.moveDown(30);
+    const startY = helper.getY();
+    helper.drawText('BILLED TO', { x: 40, size: 9, isBold: true, color: rgb(156/255, 163/255, 175/255) });
+    helper.moveDown(15);
+    helper.drawText(data.schoolName, { x: 40, size: 12, isBold: true });
+    helper.moveDown(15);
+    const lastFour = data.invoiceId.split('-').pop() || '';
+    helper.drawText(`School Node ID: ${lastFour}`, { x: 40, size: 10, color: rgb(75/255, 85/255, 99/255) });
+    
+    helper.setY(startY);
+    helper.drawRightAlignedText('PAYMENT DETAILS', { x: 555.28 - 40, size: 9, isBold: true, color: rgb(156/255, 163/255, 175/255) });
+    helper.moveDown(15);
+    helper.drawRightAlignedText(`Billing Month: ${data.month}`, { x: 555.28 - 40, size: 10 });
+    helper.moveDown(15);
+    helper.drawRightAlignedText(`Date Paid: ${data.paidAt}`, { x: 555.28 - 40, size: 10 });
+    
+    // Table
+    helper.moveDown(45);
+    helper.drawTableHeaderBg(40, 515.28);
+    helper.drawText('Service Description', { x: 50, size: 10, isBold: true, color: rgb(75/255, 85/255, 99/255) });
+    helper.drawRightAlignedText('Student Count', { x: 340, size: 10, isBold: true, color: rgb(75/255, 85/255, 99/255) });
+    helper.drawRightAlignedText('Rate / Student', { x: 440, size: 10, isBold: true, color: rgb(75/255, 85/255, 99/255) });
+    helper.drawRightAlignedText('Subtotal', { x: 555.28 - 50, size: 10, isBold: true, color: rgb(75/255, 85/255, 99/255) });
+    
+    helper.moveDown(22);
+    helper.drawLine({});
+    
+    helper.moveDown(20);
+    helper.drawText('CampusGrid Infrastructure & Node', { x: 50, size: 10 });
+    helper.drawRightAlignedText(data.studentCount.toString(), { x: 340, size: 10 });
+    helper.drawRightAlignedText(`Rs. ${data.ratePerStudent}`, { x: 440, size: 10 });
+    helper.drawRightAlignedText(`Rs. ${data.amountDue}`, { x: 555.28 - 50, size: 10 });
+    
+    helper.moveDown(15);
+    helper.drawText('Maintenance Subscription', { x: 50, size: 10 });
+    
+    helper.moveDown(20);
+    helper.drawLine({});
+    
+    // Summary
+    helper.moveDown(30);
+    helper.drawRightAlignedText('Amount Due', { x: 440, size: 11 });
+    helper.drawRightAlignedText(`Rs. ${data.amountDue}`, { x: 555.28 - 50, size: 11 });
+    
+    helper.moveDown(20);
+    helper.drawLine({ margin: 380 });
+    
+    helper.moveDown(25);
+    helper.drawRightAlignedText('Total Paid', { x: 440, size: 16, isBold: true });
+    helper.drawRightAlignedText(`Rs. ${data.amountPaid}`, { x: 555.28 - 50, size: 16, isBold: true, color: rgb(79/255, 70/255, 229/255) });
+    
+    // Footer
+    helper.setY(100);
+    helper.drawLine({});
+    helper.moveDown(20);
+    const footerText1 = 'Thank you for choosing CampusGrid. This is an official receipt for your school node subscription.';
+    let textWidth = fontRegular.widthOfTextAtSize(footerText1, 9);
+    page.drawText(footerText1, {
+      x: (595.28 - textWidth) / 2,
+      y: helper.getY(),
+      size: 9,
+      font: fontRegular,
+      color: rgb(156/255, 163/255, 175/255),
+    });
+    
+    helper.moveDown(15);
+    const footerText2 = 'Support: help@campusgrid.com | Website: campusgrid.com';
+    textWidth = fontRegular.widthOfTextAtSize(footerText2, 9);
+    page.drawText(footerText2, {
+      x: (595.28 - textWidth) / 2,
+      y: helper.getY(),
+      size: 9,
+      font: fontRegular,
+      color: rgb(156/255, 163/255, 175/255),
+    });
+    
+    return Buffer.from(await pdfDoc.save());
   }
 }

@@ -64,7 +64,7 @@ export class PayrollController {
 
     const school = await this.prisma.school.findUnique({ where: { id: payroll.user.School_id! } });
 
-    const html = this.pdfService.getSalarySlipTemplate({
+    const pdf = await this.pdfService.generateSalarySlip({
       schoolName: school?.name || 'CampusGrid School',
       staffName: payroll.user.name || 'Employee',
       role: payroll.user.role,
@@ -75,8 +75,6 @@ export class PayrollController {
       net: payroll.netSalary,
       paidAt: payroll.paidAt.toLocaleDateString(),
     });
-
-    const pdf = await this.pdfService.generatePdf(html);
 
     res.set({
       'Content-Type': 'application/pdf',

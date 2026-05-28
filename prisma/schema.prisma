@@ -37,6 +37,7 @@ model attachment {
   assignment    Assignment? @relation(fields: [assignment_id], references: [id])
   broadcast     broadcast?  @relation(fields: [broadcast_id], references: [id])
   submission    submission? @relation(fields: [submission_id], references: [id])
+  deletedAt     DateTime?
 }
 
 model broadcast {
@@ -47,6 +48,7 @@ model broadcast {
   author_id   String
   attachments attachment[]
   author      users        @relation(fields: [author_id], references: [id])
+  deletedAt   DateTime?
 }
 
 model grade {
@@ -155,6 +157,9 @@ model students {
   examResults         ExamResult[]
   feeBills            StudentFeeBill[]
   deletedAt           DateTime?
+
+  @@index([School_id])
+  @@index([section_id])
 }
 
 model studioRoomBooking {
@@ -180,6 +185,7 @@ model studioRooms {
   studioRoomBooking studioRoomBooking[]
   timetable         timetable[]
   School            School              @relation(fields: [School_id], references: [id])
+  deletedAt         DateTime?
 }
 
 model subject {
@@ -208,6 +214,9 @@ model submission {
   students      students     @relation(fields: [students_id], references: [id])
   attachments   attachment[]
   deletedAt     DateTime?
+
+  @@index([assignment_id])
+  @@index([students_id])
 }
 
 model teachers {
@@ -228,6 +237,7 @@ model teachers {
   assignedSubstitutions substitution[]         @relation("SubTeacher")
   sentSwapRequests      StudioRoomSwapRequest[] @relation("FromTeacher")
   receivedSwapRequests  StudioRoomSwapRequest[] @relation("ToTeacher")
+  deletedAt             DateTime?
 }
 
 model teachersubjectsection {
@@ -239,6 +249,11 @@ model teachersubjectsection {
   subject     subject     @relation(fields: [subject_id], references: [id])
   teachers    teachers    @relation(fields: [teachers_id], references: [id])
   timetable   timetable[]
+  deletedAt   DateTime?
+
+  @@index([teachers_id])
+  @@index([subject_id])
+  @@index([section_id])
 }
 
 model timetable {
@@ -254,6 +269,7 @@ model timetable {
   substitution              substitution[]
   sentSwapRequests          StudioRoomSwapRequest[] @relation("FromSwap")
   receivedSwapRequests      StudioRoomSwapRequest[] @relation("ToSwap")
+  deletedAt                 DateTime?
 
   @@unique([dayOfWeek, lectureNo, teachersubjectsection_id])
 }
@@ -272,6 +288,7 @@ model StudioRoomSwapRequest {
   toTimetable     timetable?  @relation("ToSwap", fields: [toTimetableId], references: [id])
   fromTeacher     teachers    @relation("FromTeacher", fields: [fromTeacherId], references: [id])
   toTeacher       teachers    @relation("ToTeacher", fields: [toTeacherId], references: [id])
+  deletedAt       DateTime?
 }
 
 enum RequestStatus {
@@ -295,6 +312,7 @@ model substitution {
   originalTeacher teachers  @relation("OriginalTeacher", fields: [originalTeacherId], references: [id])
   subTeacher      teachers  @relation("SubTeacher", fields: [subTeacherId], references: [id])
   School          School    @relation(fields: [School_id], references: [id])
+  deletedAt       DateTime?
 
   @@unique([date, timetable_id])
 }
@@ -548,6 +566,7 @@ model parent {
   School      School   @relation(fields: [School_id], references: [id])
   students    students @relation(fields: [students_id], references: [id])
   users       users    @relation(fields: [users_id], references: [id])
+  deletedAt   DateTime?
 }
 
 model users {
@@ -591,8 +610,11 @@ model attendance {
   School_id String
   School    School           @relation(fields: [School_id], references: [id])
   users     users            @relation(fields: [users_id], references: [id])
+  deletedAt DateTime?
 
   @@unique([users_id, date])
+  @@index([users_id])
+  @@index([School_id])
 }
 
 model leaveRequest {
@@ -610,6 +632,11 @@ model leaveRequest {
   student       students    @relation(fields: [studentId], references: [id])
   approvedBy    users?      @relation("ApprovedLeaves", fields: [approvedById], references: [id])
   School        School         @relation(fields: [School_id], references: [id])
+  deletedAt     DateTime?
+
+  @@index([studentId])
+  @@index([approvedById])
+  @@index([School_id])
 }
 
 model Escalation {
@@ -628,6 +655,7 @@ model Escalation {
 
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
 }
 
 enum EscalationStatus {

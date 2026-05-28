@@ -61,7 +61,7 @@ export class FeesController {
 
     const school = await this.prisma.school.findUnique({ where: { id: bill.student.users.School_id! } });
 
-    const html = this.pdfService.getFeeReceiptTemplate({
+    const pdf = await this.pdfService.generateFeeReceipt({
       schoolName: school?.name || 'CampusGrid School',
       studentName: bill.student.users.name || 'Student',
       rollNo: bill.student.rollNumber?.toString() || 'N/A',
@@ -70,8 +70,6 @@ export class FeesController {
       amount: bill.amountPaid,
       paidAt: bill.paidAt.toLocaleDateString(),
     });
-
-    const pdf = await this.pdfService.generatePdf(html);
 
     res.set({
       'Content-Type': 'application/pdf',

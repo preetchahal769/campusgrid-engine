@@ -115,7 +115,7 @@ export class SchoolSubscriptionsService {
 
     // 3. Generate PDF Invoice
     const school = await this.prisma.school.findUnique({ where: { id: sub.schoolId } });
-    const html = this.pdfService.getSubscriptionInvoiceTemplate({
+    const pdfBuffer = await this.pdfService.generateSubscriptionInvoice({
       invoiceId: sub.invoiceId || sub.id,
       schoolName: school?.name || 'School Node',
       month: sub.month,
@@ -125,8 +125,6 @@ export class SchoolSubscriptionsService {
       amountPaid: amount,
       paidAt: new Date().toLocaleDateString(),
     });
-
-    const pdfBuffer = await this.pdfService.generatePdf(html);
     const storageKey = `invoices/subscription/${sub.invoiceId || sub.id}.pdf`;
     await this.storageService.uploadFile(storageKey, pdfBuffer, 'application/pdf');
     const invoiceUrl = await this.storageService.getPresignedUrl(storageKey);

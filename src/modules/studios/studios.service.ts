@@ -14,13 +14,13 @@ export class StudiosService {
 
   async findAll(schoolId: string) {
     return this.prisma.studioRooms.findMany({
-      where: { School_id: schoolId },
+      where: { School_id: schoolId, deletedAt: null },
     });
   }
 
   async findOne(id: string) {
-    const room = await this.prisma.studioRooms.findUnique({
-      where: { id },
+    const room = await this.prisma.studioRooms.findFirst({
+      where: { id, deletedAt: null },
     });
     if (!room) throw new NotFoundException('Studio room not found');
     return room;
@@ -34,8 +34,9 @@ export class StudiosService {
   }
 
   async remove(id: string) {
-    return this.prisma.studioRooms.delete({
+    return this.prisma.studioRooms.update({
       where: { id },
+      data: { deletedAt: new Date() },
     });
   }
 
@@ -60,7 +61,7 @@ export class StudiosService {
 
   async distributeStudioRooms(schoolId: string, lecturesPerClassPerWeek: number = 2) {
     const rooms = await this.prisma.studioRooms.findMany({
-      where: { School_id: schoolId },
+      where: { School_id: schoolId, deletedAt: null },
     });
 
     if (rooms.length === 0) {
