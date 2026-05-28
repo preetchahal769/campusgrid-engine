@@ -2,12 +2,13 @@ import { Injectable, ForbiddenException, ConflictException } from '@nestjs/commo
 import { PrismaService } from '../../database/prisma.service';
 import { CreateGradeDto } from './dto/create-grade.dto';
 import { UserRole } from '@prisma/client';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class GradesService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createGradeDto: CreateGradeDto, currentUser: any) {
+  async create(createGradeDto: CreateGradeDto, currentUser: AuthenticatedUser) {
     let targetSchoolId = createGradeDto.School_id;
 
     if (currentUser.role !== UserRole.SUPER_ADMIN) {
@@ -39,7 +40,7 @@ export class GradesService {
     });
   }
 
-  async findAll(currentUser: any) {
+  async findAll(currentUser: AuthenticatedUser) {
     const whereClause: any = {};
     if (currentUser.role !== UserRole.SUPER_ADMIN) {
       if (!currentUser.School_id) {

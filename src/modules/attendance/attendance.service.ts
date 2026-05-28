@@ -2,12 +2,13 @@ import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../../database/prisma.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { UserRole, AttendanceStatus } from '@prisma/client';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class AttendanceService {
   constructor(private prisma: PrismaService) {}
 
-  private async markAttendanceRecord(date: Date, users_id: string, status: AttendanceStatus, currentUser: any) {
+  private async markAttendanceRecord(date: Date, users_id: string, status: AttendanceStatus, currentUser: AuthenticatedUser) {
     // Verify user exists
     const targetUser = await this.prisma.users.findUnique({
       where: { id: users_id },
@@ -49,7 +50,7 @@ export class AttendanceService {
     });
   }
 
-  async markAttendance(createAttendanceDto: CreateAttendanceDto, currentUser: any) {
+  async markAttendance(createAttendanceDto: CreateAttendanceDto, currentUser: AuthenticatedUser) {
     const { date, records } = createAttendanceDto;
     const recordDate = new Date(date);
     
@@ -66,7 +67,7 @@ export class AttendanceService {
     return results;
   }
 
-  async fetchAttendance(filters: { date?: string, users_id?: string, section_id?: string }, currentUser: any) {
+  async fetchAttendance(filters: { date?: string, users_id?: string, section_id?: string }, currentUser: AuthenticatedUser) {
     const whereClause: any = {};
     
     if (filters.date) {
@@ -103,7 +104,7 @@ export class AttendanceService {
     });
   }
 
-  async validateIncharge(sectionId: string, currentUser: any) {
+  async validateIncharge(sectionId: string, currentUser: AuthenticatedUser) {
     if (currentUser.role === UserRole.SUPER_ADMIN || currentUser.role === UserRole.ADMIN) return true;
 
     const teacher = await this.prisma.teachers.findFirst({
@@ -121,7 +122,7 @@ export class AttendanceService {
     return true;
   }
 
-  async fetchMyAttendance(currentUser: any, month?: number, year?: number) {
+  async fetchMyAttendance(currentUser: AuthenticatedUser, month?: number, year?: number) {
     const whereClause: any = {
       users_id: currentUser.id
     };
@@ -141,7 +142,7 @@ export class AttendanceService {
     });
   }
 
-  async markSelfAttendance(currentUser: any, status: AttendanceStatus) {
+  async markSelfAttendance(currentUser: AuthenticatedUser, status: AttendanceStatus) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return this.markAttendanceRecord(today, currentUser.id, status, currentUser);

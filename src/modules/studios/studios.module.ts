@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
-import { StudiosController } from './studios.controller';
 import { StudiosService } from './studios.service';
+import { StudiosController } from './studios.controller';
+import { StudioRequestsService } from './studio-requests.service';
+import { StudioRequestsController } from './studio-requests.controller';
 
 @Module({
-  controllers: [StudiosController],
-  providers: [StudiosService]
+  controllers: [StudiosController, StudioRequestsController],
+  providers: [StudiosService, StudioRequestsService],
+  exports: [StudiosService],
 })
 export class StudiosModule {}

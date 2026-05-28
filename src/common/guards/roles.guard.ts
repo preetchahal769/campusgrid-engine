@@ -19,7 +19,7 @@ export class RolesGuard implements CanActivate {
 
     const { user } = context.switchToHttp().getRequest();
     // Assuming `user` object attached by JWT strategy has a `role` property
-    if (!user || (!user.role && user.role !== 'SUPER_ADMIN')) {
+    if (!user || !user.role) {
        return false;
     }
 

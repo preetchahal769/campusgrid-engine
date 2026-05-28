@@ -3,12 +3,13 @@ import { PrismaService } from '../../database/prisma.service';
 import { CreateTimetableDto } from './dto/create-timetable.dto';
 import { CreateBulkTimetableDto } from './dto/create-bulk-timetable.dto';
 import { UserRole } from '@prisma/client';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class TimetableService {
   constructor(private prisma: PrismaService) {}
 
-  async createBulk(dto: CreateBulkTimetableDto, currentUser: any) {
+  async createBulk(dto: CreateBulkTimetableDto, currentUser: AuthenticatedUser) {
     const results: any[] = [];
     
     // We run this in a transaction so if one slot fails (conflict), nothing is saved
@@ -50,6 +51,7 @@ export class TimetableService {
         }
       },
       include: {
+        studioRoom: { select: { roomName: true } },
         teachersubjectsection: {
           include: {
             teachers: { include: { users: { select: { name: true } } } },
@@ -72,6 +74,7 @@ export class TimetableService {
         }
       },
       include: {
+        studioRoom: { select: { roomName: true } },
         teachersubjectsection: {
           include: {
             section: { select: { name: true } },
@@ -83,6 +86,13 @@ export class TimetableService {
         { dayOfWeek: 'asc' },
         { lectureNo: 'asc' }
       ]
+    });
+  }
+
+  async updateStudioAssignment(id: string, studioRoomId: string | null) {
+    return this.prisma.timetable.update({
+      where: { id },
+      data: { studioRoomId },
     });
   }
 }

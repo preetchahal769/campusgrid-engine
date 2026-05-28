@@ -2,12 +2,13 @@ import { Injectable, ForbiddenException, NotFoundException, BadRequestException 
 import { PrismaService } from '../../database/prisma.service';
 import { CreateLeaveRequestDto, UpdateLeaveStatusDto } from './dto/leave-request.dto';
 import { UserRole, LeaveStatus, AttendanceStatus } from '@prisma/client';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class LeavesService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createDto: CreateLeaveRequestDto, currentUser: any) {
+  async create(createDto: CreateLeaveRequestDto, currentUser: AuthenticatedUser) {
     // 1. Find student profile
     const student = await this.prisma.students.findFirst({
       where: { users_id: currentUser.id }
@@ -32,7 +33,7 @@ export class LeavesService {
     });
   }
 
-  async updateStatus(id: string, updateDto: UpdateLeaveStatusDto, currentUser: any) {
+  async updateStatus(id: string, updateDto: UpdateLeaveStatusDto, currentUser: AuthenticatedUser) {
     const leave = await this.prisma.leaveRequest.findUnique({
       where: { id },
       include: { 
@@ -111,7 +112,7 @@ export class LeavesService {
     }
   }
 
-  async findAll(currentUser: any) {
+  async findAll(currentUser: AuthenticatedUser) {
     if (currentUser.role === UserRole.STUDENT) {
       const student = await this.prisma.students.findFirst({ where: { users_id: currentUser.id } });
       return this.prisma.leaveRequest.findMany({ where: { studentId: student?.id } });
@@ -136,7 +137,7 @@ export class LeavesService {
     });
   }
 
-  async escalate(id: string, currentUser: any) {
+  async escalate(id: string, currentUser: AuthenticatedUser) {
     const leave = await this.prisma.leaveRequest.findUnique({
       where: { id },
       include: { student: true }

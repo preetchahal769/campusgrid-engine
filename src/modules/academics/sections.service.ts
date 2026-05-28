@@ -2,12 +2,13 @@ import { Injectable, ForbiddenException, NotFoundException, ConflictException } 
 import { PrismaService } from '../../database/prisma.service';
 import { CreateSectionDto } from './dto/create-section.dto';
 import { UserRole } from '@prisma/client';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class SectionsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createSectionDto: CreateSectionDto, currentUser: any) {
+  async create(createSectionDto: CreateSectionDto, currentUser: AuthenticatedUser) {
     const { name, grade_id } = createSectionDto;
 
     const grade = await this.prisma.grade.findUnique({
@@ -42,7 +43,7 @@ export class SectionsService {
     });
   }
 
-  async assignIncharge(sectionId: string, teacherId: string, currentUser: any) {
+  async assignIncharge(sectionId: string, teacherId: string, currentUser: AuthenticatedUser) {
     // 1. Fetch section and teacher to verify existence
     const section = await this.prisma.section.findUnique({
       where: { id: sectionId },
@@ -84,7 +85,7 @@ export class SectionsService {
     });
   }
 
-  async findAll(currentUser: any) {
+  async findAll(currentUser: AuthenticatedUser) {
     const whereClause: any = {};
     if (currentUser.role !== UserRole.SUPER_ADMIN) {
       if (!currentUser.School_id) {
@@ -104,7 +105,7 @@ export class SectionsService {
     });
   }
 
-  async findMyClassStudents(currentUser: any) {
+  async findMyClassStudents(currentUser: AuthenticatedUser) {
     const teacher = await this.prisma.teachers.findFirst({
       where: { users_id: currentUser.id }
     });

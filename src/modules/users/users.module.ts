@@ -8,9 +8,10 @@ import { TeachersService } from './teachers.service';
 import { PrincipalsController } from './principals.controller';
 import { PrincipalsService } from './principals.service';
 import { PrismaModule } from '../../database/prisma.module';
+import { CommunicationsModule } from '../communications/communications.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, CommunicationsModule],
   controllers: [UsersController, StudentsController, TeachersController, PrincipalsController],
   providers: [UsersService, StudentsService, TeachersService, PrincipalsService]
 })

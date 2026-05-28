@@ -1,0 +1,56 @@
+name: Environment-Targeted Docker Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+jobs:
+  determine-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      env_target: ${{ steps.set-target.outputs.env_target }}
+      env_name: ${{ steps.set-target.outputs.env_name }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - id: set-target
+        name: Set Build Environment Target
+        run: |
+          REF="${{ github.ref }}"
+          if [[ $REF == refs/tags/v*-staging ]]; then
+            echo "env_target=staging-env" >> $GITHUB_OUTPUT
+            echo "env_name=staging" >> $GITHUB_OUTPUT
+            echo "Targeting Staging Environment..."
+          elif [[ $REF == refs/tags/v* ]]; then
+            echo "env_target=production-env" >> $GITHUB_OUTPUT
+            echo "env_name=production" >> $GITHUB_OUTPUT
+            echo "Targeting Production Environment..."
+          else
+            echo "env_target=testing-env" >> $GITHUB_OUTPUT
+            echo "env_name=testing" >> $GITHUB_OUTPUT
+            echo "Targeting Testing/Development Environment..."
+          fi
+
+  build-and-simulate:
+    needs: determine-environment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Compile and Verify Target Container
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: ${{ needs.determine-environment.outputs.env_target }}
+          push: false
+          tags: campusgrid-engine:${{ needs.determine-environment.outputs.env_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

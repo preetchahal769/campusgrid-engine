@@ -4,12 +4,13 @@ import { CreateStudentProfileDto } from './dto/create-student-profile.dto';
 import { UpdateStudentProfileDto } from './dto/update-student-profile.dto';
 import { BulkUpdateSectionDto } from './dto/bulk-update-section.dto';
 import { UserRole } from '@prisma/client';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class StudentsService {
   constructor(private prisma: PrismaService) {}
 
-  async createProfile(createStudentProfileDto: CreateStudentProfileDto, currentUser: any) {
+  async createProfile(createStudentProfileDto: CreateStudentProfileDto, currentUser: AuthenticatedUser) {
     const { users_id, section_id, ...rest } = createStudentProfileDto;
     let targetSchoolId = createStudentProfileDto.School_id;
 
@@ -81,7 +82,7 @@ export class StudentsService {
     });
   }
 
-  async findAll(currentUser: any) {
+  async findAll(currentUser: AuthenticatedUser) {
     const whereClause: any = { status: 'ACTIVE' };
     if (currentUser.role !== UserRole.SUPER_ADMIN) {
       if (!currentUser.School_id) {
@@ -101,7 +102,7 @@ export class StudentsService {
     });
   }
 
-  async findMyProfile(currentUser: any) {
+  async findMyProfile(currentUser: AuthenticatedUser) {
     const profile = await this.prisma.students.findFirst({
       where: { users_id: currentUser.id, status: 'ACTIVE' },
       include: {
@@ -133,7 +134,7 @@ export class StudentsService {
     };
   }
 
-  async updateProfile(id: string, updateDto: UpdateStudentProfileDto, currentUser: any) {
+  async updateProfile(id: string, updateDto: UpdateStudentProfileDto, currentUser: AuthenticatedUser) {
     const existingProfile = await this.prisma.students.findUnique({
       where: { id },
     });
@@ -169,7 +170,7 @@ export class StudentsService {
     });
   }
 
-  async updateBulkSection(bulkDto: BulkUpdateSectionDto, currentUser: any) {
+  async updateBulkSection(bulkDto: BulkUpdateSectionDto, currentUser: AuthenticatedUser) {
     const { studentIds, section_id } = bulkDto;
 
     const section = await this.prisma.section.findUnique({

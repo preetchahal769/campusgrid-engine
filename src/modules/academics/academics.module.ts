@@ -7,10 +7,25 @@ import { TimetableService } from './timetable.service';
 import { LeavesService } from './leaves.service';
 import { AcademicsController } from './academics.controller';
 import { PrismaModule } from '../../database/prisma.module';
+import { CommunicationsModule } from '../communications/communications.module';
+
+import { SubstitutionsService } from './substitutions.service';
+import { ExamsService } from './exams.service';
+import { CalendarService } from './calendar.service';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, CommunicationsModule],
   controllers: [AcademicsController],
-  providers: [AssignmentsService, GradesService, SectionsService, SubjectsService, TimetableService, LeavesService]
+  providers: [
+    AssignmentsService, 
+    GradesService, 
+    SectionsService, 
+    SubjectsService, 
+    TimetableService, 
+    LeavesService, 
+    SubstitutionsService,
+    ExamsService,
+    CalendarService
+  ]
 })
 export class AcademicsModule {}

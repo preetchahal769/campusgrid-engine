@@ -23,7 +23,7 @@ export class CreateTeacherProfileDto {
 
   @IsOptional()
   @IsString()
-  Experince?: string;
+  experience?: string;
 
   @IsOptional()
   @IsInt()
