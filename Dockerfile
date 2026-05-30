@@ -23,6 +23,7 @@ CMD ["npm", "run", "start:dev"]
 
 # 4. Production Builder
 FROM dependencies AS builder
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 RUN npm run build
 RUN npm prune --production
 
