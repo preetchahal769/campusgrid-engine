@@ -52,7 +52,7 @@ async function main() {
         name: schoolName,
         city: faker.location.city(),
         pincode: parseInt(faker.location.zipCode('#####')),
-        education_board: faker.helpers.arrayElement(['CBSE', 'ICSE', 'State Board']),
+        educationBoard: faker.helpers.arrayElement(['CBSE', 'ICSE', 'State Board']),
         subscriptionRate: faker.helpers.arrayElement([80, 100, 120]), // Custom rates
         createdAt: schoolCreatedAt,
       },
