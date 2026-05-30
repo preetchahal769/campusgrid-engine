@@ -11,11 +11,18 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     const host = this.configService.get<string>('REDIS_HOST', 'localhost');
     const port = this.configService.get<number>('REDIS_PORT', 6379);
+    const useTls = this.configService.get<string>('REDIS_TLS') === 'true';
 
-    this.redisClient = new Redis({
+    const redisOptions: any = {
       host,
       port,
-    });
+    };
+
+    if (useTls) {
+      redisOptions.tls = {};
+    }
+
+    this.redisClient = new Redis(redisOptions);
   }
 
   onModuleDestroy() {
