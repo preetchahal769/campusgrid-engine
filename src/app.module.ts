@@ -37,12 +37,16 @@ import { SupportModule } from './modules/support/support.module';
     PrismaModule,
     BullModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        connection: {
+      useFactory: (config: ConfigService) => {
+        const connection: any = {
           host: config.get('REDIS_HOST', 'localhost'),
           port: parseInt(config.get('REDIS_PORT', '6379')),
-        },
-      }),
+        };
+        if (config.get('REDIS_TLS') === 'true') {
+          connection.tls = {};
+        }
+        return { connection };
+      },
     }),
     UsersModule,
     AcademicsModule,
