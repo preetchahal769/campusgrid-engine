@@ -12,11 +12,8 @@ dist
 .env.*
 *.env
 
-# ─── Firebase Service Account JSON (never bake credentials into an image) ────
-*.json
-!package.json
-!package-lock.json
-!nest-cli.json
+# ─── Firebase Service Account JSON (target specifically — never use *.json) ───
+*-firebase-adminsdk-*.json
 
 # ─── Logs ────────────────────────────────────────────────────────────────────
 *.log
