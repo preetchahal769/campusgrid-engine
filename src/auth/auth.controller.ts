@@ -48,11 +48,13 @@ export class AuthController {
 
   private setTokens(res: Response, access: string, refresh: string) {
     const isProd = process.env.NODE_ENV === 'production';
+    const cookieDomain = process.env.COOKIE_DOMAIN || '.sikshatantar.app';
     
     res.cookie('access_token', access, {
       httpOnly: true,
       secure: isProd,
       sameSite: 'lax',
+      domain: isProd ? cookieDomain : undefined,
       maxAge: 15 * 60 * 1000, // 15 mins
     });
 
@@ -60,6 +62,7 @@ export class AuthController {
       httpOnly: true,
       secure: isProd,
       sameSite: 'lax',
+      domain: isProd ? cookieDomain : undefined,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
   }
