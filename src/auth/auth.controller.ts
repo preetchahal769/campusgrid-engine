@@ -47,7 +47,7 @@ export class AuthController {
   }
 
   private setTokens(res: Response, access: string, refresh: string) {
-    const isProd = process.env.NODE_ENV === 'production';
+    const isProd = ['production', 'staging'].includes(process.env.NODE_ENV || '');
     const cookieDomain = process.env.COOKIE_DOMAIN || '.sikshatantar.app';
     
     res.cookie('access_token', access, {
