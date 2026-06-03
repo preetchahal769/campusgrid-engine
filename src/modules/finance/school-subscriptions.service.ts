@@ -5,6 +5,7 @@ import { AuditService } from '../audit/audit.service';
 import { PdfService } from '../storage/pdf.service';
 import { StorageService } from '../storage/storage.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { SentryCron } from '@sentry/nestjs';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
@@ -22,6 +23,7 @@ export class SchoolSubscriptionsService {
    * Automatically generate bills on the 1st of every month.
    */
   @Cron(CronExpression.EVERY_1ST_DAY_OF_MONTH_AT_MIDNIGHT)
+  @SentryCron('auto-monthly-billing', { schedule: { type: 'crontab', value: CronExpression.EVERY_1ST_DAY_OF_MONTH_AT_MIDNIGHT } })
   async handleAutoMonthlyBilling() {
     const month = new Date().toISOString().substring(0, 7); // YYYY-MM
     this.logger.log(`[Cron] Auto-generating bills for ${month}`);

@@ -5,6 +5,7 @@ import { Queue } from 'bullmq';
 import { StartConversationDto, CreateMessageDto } from './dto/message.dto';
 import { UserRole, ConversationStatus, ConversationType } from '@prisma/client';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { SentryCron } from '@sentry/nestjs';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
@@ -93,6 +94,7 @@ export class MessagesService {
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @SentryCron('archive-expired-groups', { schedule: { type: 'crontab', value: CronExpression.EVERY_DAY_AT_MIDNIGHT } })
   async archiveExpiredAssignmentGroups() {
     const now = new Date();
 
