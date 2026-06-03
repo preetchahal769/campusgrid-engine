@@ -9,7 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './database/prisma.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import { LastActiveInterceptor } from './common/interceptors/last-active.interceptor';
 
 import { UsersModule } from './modules/users/users.module';
@@ -24,9 +24,11 @@ import { SchoolsModule } from './modules/schools/schools.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { SystemModule } from './modules/system/system.module';
 import { SupportModule } from './modules/support/support.module';
+import { SentryModule, SentryGlobalFilter } from '@sentry/nestjs/setup';
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{
@@ -63,6 +65,10 @@ import { SupportModule } from './modules/support/support.module';
   ],
   controllers: [AppController],
   providers: [
+    {
+      provide: APP_FILTER,
+      useClass: SentryGlobalFilter,
+    },
     AppService,
     {
       provide: APP_INTERCEPTOR,
