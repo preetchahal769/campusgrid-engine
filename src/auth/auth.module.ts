@@ -4,14 +4,14 @@ import { AuthController } from './auth.controller';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { JwtStrategy, jwtSecret } from './strategies/jwt.strategy';
+import { JwtStrategy, defaultJwtSecret } from './strategies/jwt.strategy';
 
 @Module({
   imports: [
     PassportModule,
     JwtModule.registerAsync({
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET', jwtSecret),
+        secret: config.get<string>('JWT_SECRET', defaultJwtSecret),
         signOptions: { expiresIn: '15m' }, // Access token: 15 minutes
       }),
       inject: [ConfigService],
