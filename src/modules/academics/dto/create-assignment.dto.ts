@@ -25,6 +25,7 @@ export class CreateAssignmentDto {
   dueDate?: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   maxMarks?: number;
 
