@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Res, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, Res, UseGuards, Request, UnauthorizedException, HttpCode, HttpStatus } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -34,14 +34,24 @@ export class AuthController {
   }
 
   @Post('logout')
+  @HttpCode(HttpStatus.OK)
   async logout(@Request() req: AuthenticatedRequest, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies['refresh_token'];
     if (refreshToken && req.user) {
       await this.authService.logout(req.user.id, refreshToken);
     }
 
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token');
+    const isProd = ['production', 'staging'].includes(process.env.NODE_ENV || '');
+    const cookieDomain = process.env.COOKIE_DOMAIN || '.sikshatantar.app';
+    const cookieOptions = {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax' as const,
+      domain: isProd ? cookieDomain : undefined,
+    };
+
+    res.clearCookie('access_token', cookieOptions);
+    res.clearCookie('refresh_token', cookieOptions);
 
     return { message: 'Logged out successfully' };
   }
