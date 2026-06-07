@@ -9,20 +9,23 @@ export class StorageService {
   private bucketName: string;
 
   constructor(private configService: ConfigService) {
-    const endpoint = this.configService.get<string>('MINIO_ENDPOINT', 'http://localhost:9000');
-    const accessKeyId = this.configService.get<string>('MINIO_ACCESS_KEY', 'minioadmin');
-    const secretAccessKey = this.configService.get<string>('MINIO_SECRET_KEY', 'minioadmin');
+    const accessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID') || this.configService.get<string>('MINIO_ACCESS_KEY', 'minioadmin');
+    const secretAccessKey = this.configService.get<string>('AWS_SECRET_ACCESS_KEY') || this.configService.get<string>('MINIO_SECRET_KEY', 'minioadmin');
+    this.bucketName = this.configService.get<string>('AWS_S3_BUCKET_NAME') || this.configService.get<string>('MINIO_BUCKET_NAME', 'campusgrid');
+
+    const endpoint = this.configService.get<string>('MINIO_ENDPOINT'); // Only set for local MinIO
     
-    this.bucketName = this.configService.get<string>('MINIO_BUCKET_NAME', 'campusgrid');
+    // Handle messy region strings like "Asia Pacific (Sydney) ap-southeast-2"
+    const rawRegion = this.configService.get<string>('AWS_REGION') || 'us-east-1';
+    const region = rawRegion.split(' ').pop() || rawRegion;
 
     this.s3Client = new S3Client({
-      endpoint,
-      region: 'us-east-1', // Default for MinIO
+      ...(endpoint ? { endpoint, forcePathStyle: true } : {}),
+      region,
       credentials: {
         accessKeyId,
         secretAccessKey,
       },
-      forcePathStyle: true, // Required for MinIO
     });
   }
 
