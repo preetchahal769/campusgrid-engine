@@ -702,3 +702,15 @@ enum AttendanceStatus {
   LEAVE
   HOLIDAY
 }
+
+model BugReport {
+  id            String    @id @default(cuid())
+  userEmail     String?
+  userRole      String?
+  url           String?
+  description   String?
+  screenshotUrl String?
+  status        String    @default("OPEN")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime? @updatedAt
+}
