@@ -138,6 +138,72 @@ export class TeachersService {
     return profile;
   }
 
+  async updateProfile(currentUser: AuthenticatedUser, updateDto: any) {
+    const profile = await this.prisma.teachers.findFirst({
+      where: { users_id: currentUser.id },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Teacher profile not found.');
+    }
+
+    const { qualification, specilization } = updateDto;
+
+    // Check if fields are empty
+    const isQualificationEmpty = !profile.qualification;
+    const isSpecilizationEmpty = !profile.specilization;
+
+    const canUpdateDirectly = 
+      (qualification && isQualificationEmpty) || 
+      (specilization && isSpecilizationEmpty);
+
+    if (canUpdateDirectly) {
+      // Update directly what is empty
+      const updateData: any = {};
+      if (qualification && isQualificationEmpty) updateData.qualification = qualification;
+      if (specilization && isSpecilizationEmpty) updateData.specilization = specilization;
+
+      await this.prisma.teachers.update({
+        where: { id: profile.id },
+        data: updateData,
+      });
+
+      // If they also tried to update non-empty fields, spawn a request for those
+      if ((qualification && !isQualificationEmpty) || (specilization && !isSpecilizationEmpty)) {
+        if (currentUser.School_id) {
+          await this.prisma.profileChangeRequest.create({
+            data: {
+              userId: currentUser.id,
+              School_id: currentUser.School_id,
+              requestedQualification: qualification && !isQualificationEmpty ? qualification : undefined,
+              requestedSpecilization: specilization && !isSpecilizationEmpty ? specilization : undefined,
+              status: 'PENDING',
+            }
+          });
+          return { success: true, message: 'Some fields were updated directly, others are pending approval.', pendingApproval: true };
+        }
+      }
+
+      return { success: true, message: 'Teacher profile updated successfully.' };
+    }
+
+    // If nothing could be updated directly, it means fields are full, require approval
+    if (currentUser.School_id && (qualification || specilization)) {
+      await this.prisma.profileChangeRequest.create({
+        data: {
+          userId: currentUser.id,
+          School_id: currentUser.School_id,
+          requestedQualification: qualification !== profile.qualification ? qualification : undefined,
+          requestedSpecilization: specilization !== profile.specilization ? specilization : undefined,
+          status: 'PENDING',
+        }
+      });
+      return { success: true, message: 'Change request submitted for approval.', pendingApproval: true };
+    }
+
+    return { success: true, message: 'No changes made.' };
+  }
+
   async findAll(currentUser: AuthenticatedUser) {
     const whereClause: any = {};
     if (currentUser.role !== UserRole.SUPER_ADMIN) {

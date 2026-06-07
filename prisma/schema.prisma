@@ -52,10 +52,10 @@ model broadcast {
 }
 
 model grade {
-  id            String    @id @default(cuid())
+  id            String         @id @default(cuid())
   name          String?
   School_id     String
-  School        School    @relation(fields: [School_id], references: [id])
+  School        School         @relation(fields: [School_id], references: [id])
   section       section[]
   feeStructures FeeStructure[]
   deletedAt     DateTime?
@@ -67,40 +67,41 @@ model principal {
   experienceYears Int?      @map("experinceYear")
   joiningDate     DateTime? @db.Date
   signatureUrl    String?   @db.VarChar
-  School_id     String
-  users_id      String
-  users         users     @relation(fields: [users_id], references: [id])
-  deletedAt     DateTime?
+  School_id       String
+  users_id        String
+  users           users     @relation(fields: [users_id], references: [id])
+  deletedAt       DateTime?
 }
 
 model School {
-  id              String        @id @default(cuid())
-  name            String?       @db.VarChar
-  rankingPoint    Int?
-  city            String?       @db.VarChar
-  pincode         Int?
-  educationBoard  String?       @map("education board") @db.VarChar
-  status          SchoolStatus   @default(ACTIVE)
-  region          String?        @db.VarChar
-  subscriptionRate Float         @default(80)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime?      @updatedAt
-  deletedAt       DateTime?
-  attendance      attendance[]
-  grade           grade[]
-  substitution    substitution[]
-  parent          parent[]
-  studioRooms     studioRooms[]
-  subject         subject[]
-  users           users[]
-  leaveRequest    leaveRequest[]
-  exams           Exam[]
-  subscriptions   SchoolSubscription[]
-  feeStructures   FeeStructure[]
-  conversations   Conversation[]
-  academicTerms   AcademicTerm[]
-  schoolEvents    SchoolEvent[]
-  escalations     Escalation[]
+  id                    String                 @id @default(cuid())
+  name                  String?                @db.VarChar
+  rankingPoint          Int?
+  city                  String?                @db.VarChar
+  pincode               Int?
+  educationBoard        String?                @map("education board") @db.VarChar
+  status                SchoolStatus           @default(ACTIVE)
+  region                String?                @db.VarChar
+  subscriptionRate      Float                  @default(80)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime?              @updatedAt
+  deletedAt             DateTime?
+  attendance            attendance[]
+  grade                 grade[]
+  substitution          substitution[]
+  parent                parent[]
+  studioRooms           studioRooms[]
+  subject               subject[]
+  users                 users[]
+  leaveRequest          leaveRequest[]
+  exams                 Exam[]
+  subscriptions         SchoolSubscription[]
+  feeStructures         FeeStructure[]
+  conversations         Conversation[]
+  academicTerms         AcademicTerm[]
+  schoolEvents          SchoolEvent[]
+  escalations           Escalation[]
+  profileChangeRequests ProfileChangeRequest[]
 }
 
 model section {
@@ -118,45 +119,45 @@ model section {
 }
 
 model staff {
-  id             String    @id @default(cuid())
-  department     String?   @db.VarChar
-  joiningDate    DateTime? @db.Date
-  experience     String?   @map("Experince")
-  monthlySalary  Int?      @map("monthly salary")
-  licenseNumber  Int?
-  assignedArea   String?   @db.VarChar
-  users_id       String
-  School_id      String
-  users          users     @relation(fields: [users_id], references: [id])
-  deletedAt      DateTime?
+  id            String    @id @default(cuid())
+  department    String?   @db.VarChar
+  joiningDate   DateTime? @db.Date
+  experience    String?   @map("Experince")
+  monthlySalary Int?      @map("monthly salary")
+  licenseNumber Int?
+  assignedArea  String?   @db.VarChar
+  users_id      String
+  School_id     String
+  users         users     @relation(fields: [users_id], references: [id])
+  deletedAt     DateTime?
 }
 
 model students {
-  id                  String       @id @default(cuid())
-  admissionNumber     String?      @db.VarChar
-  rollNumber          Int?
-  dateOfBirth         DateTime?    @db.Date
-  bloodGroup          String?      @db.VarChar
-  fatherName          String?      @db.VarChar
-  motherName          String?      @db.VarChar
-  emergencyContact    String?      @db.VarChar
-  rankingPoints       Int?
-  users_id            String
-  School_id           String
-  section_id          String
-  discountPercentage  Int?         @default(0) @map("discount percentage")
-  monthlyFee          Int?         @map("monthly fee")
-  status              EnrollmentStatus @default(ACTIVE)
-  enrolledAt          DateTime         @default(now())
-  transferredAt       DateTime?
-  parent              parent[]
-  section             section      @relation(fields: [section_id], references: [id])
-  users               users        @relation(fields: [users_id], references: [id])
-  submission          submission[]
-  leaveRequest        leaveRequest[]
-  examResults         ExamResult[]
-  feeBills            StudentFeeBill[]
-  deletedAt           DateTime?
+  id                 String           @id @default(cuid())
+  admissionNumber    String?          @db.VarChar
+  rollNumber         Int?
+  dateOfBirth        DateTime?        @db.Date
+  bloodGroup         String?          @db.VarChar
+  fatherName         String?          @db.VarChar
+  motherName         String?          @db.VarChar
+  emergencyContact   String?          @db.VarChar
+  rankingPoints      Int?
+  users_id           String
+  School_id          String
+  section_id         String
+  discountPercentage Int?             @default(0) @map("discount percentage")
+  monthlyFee         Int?             @map("monthly fee")
+  status             EnrollmentStatus @default(ACTIVE)
+  enrolledAt         DateTime         @default(now())
+  transferredAt      DateTime?
+  parent             parent[]
+  section            section          @relation(fields: [section_id], references: [id])
+  users              users            @relation(fields: [users_id], references: [id])
+  submission         submission[]
+  leaveRequest       leaveRequest[]
+  examResults        ExamResult[]
+  feeBills           StudentFeeBill[]
+  deletedAt          DateTime?
 
   @@index([School_id])
   @@index([section_id])
@@ -233,8 +234,8 @@ model teachers {
   studioRoomBooking     studioRoomBooking[]
   users                 users                   @relation(fields: [users_id], references: [id])
   teachersubjectsection teachersubjectsection[]
-  originalSubstitutions substitution[]         @relation("OriginalTeacher")
-  assignedSubstitutions substitution[]         @relation("SubTeacher")
+  originalSubstitutions substitution[]          @relation("OriginalTeacher")
+  assignedSubstitutions substitution[]          @relation("SubTeacher")
   sentSwapRequests      StudioRoomSwapRequest[] @relation("FromTeacher")
   receivedSwapRequests  StudioRoomSwapRequest[] @relation("ToTeacher")
   deletedAt             DateTime?
@@ -257,38 +258,38 @@ model teachersubjectsection {
 }
 
 model timetable {
-  id                        String                @id @default(cuid())
-  dayOfWeek                 String
-  lectureNo                 Int
-  startTime                 String?
-  endTime                   String?
-  teachersubjectsection_id  String
-  studioRoomId              String?
-  teachersubjectsection     teachersubjectsection @relation(fields: [teachersubjectsection_id], references: [id])
-  studioRoom                studioRooms?          @relation(fields: [studioRoomId], references: [id])
-  substitution              substitution[]
-  sentSwapRequests          StudioRoomSwapRequest[] @relation("FromSwap")
-  receivedSwapRequests      StudioRoomSwapRequest[] @relation("ToSwap")
-  deletedAt                 DateTime?
+  id                       String                  @id @default(cuid())
+  dayOfWeek                String
+  lectureNo                Int
+  startTime                String?
+  endTime                  String?
+  teachersubjectsection_id String
+  studioRoomId             String?
+  teachersubjectsection    teachersubjectsection   @relation(fields: [teachersubjectsection_id], references: [id])
+  studioRoom               studioRooms?            @relation(fields: [studioRoomId], references: [id])
+  substitution             substitution[]
+  sentSwapRequests         StudioRoomSwapRequest[] @relation("FromSwap")
+  receivedSwapRequests     StudioRoomSwapRequest[] @relation("ToSwap")
+  deletedAt                DateTime?
 
   @@unique([dayOfWeek, lectureNo, teachersubjectsection_id])
 }
 
 model StudioRoomSwapRequest {
-  id              String      @id @default(cuid())
+  id              String        @id @default(cuid())
   fromTimetableId String
-  toTimetableId   String?     
+  toTimetableId   String?
   fromTeacherId   String
   toTeacherId     String
   status          RequestStatus @default(PENDING)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
-  fromTimetable   timetable   @relation("FromSwap", fields: [fromTimetableId], references: [id])
-  toTimetable     timetable?  @relation("ToSwap", fields: [toTimetableId], references: [id])
-  fromTeacher     teachers    @relation("FromTeacher", fields: [fromTeacherId], references: [id])
-  toTeacher       teachers    @relation("ToTeacher", fields: [toTeacherId], references: [id])
-  deletedAt       DateTime?
+  fromTimetable timetable  @relation("FromSwap", fields: [fromTimetableId], references: [id])
+  toTimetable   timetable? @relation("ToSwap", fields: [toTimetableId], references: [id])
+  fromTeacher   teachers   @relation("FromTeacher", fields: [fromTeacherId], references: [id])
+  toTeacher     teachers   @relation("ToTeacher", fields: [toTeacherId], references: [id])
+  deletedAt     DateTime?
 }
 
 enum RequestStatus {
@@ -299,13 +300,13 @@ enum RequestStatus {
 }
 
 model substitution {
-  id                String      @id @default(cuid())
-  date              DateTime    @db.Date
+  id                String   @id @default(cuid())
+  date              DateTime @db.Date
   timetable_id      String
   originalTeacherId String
   subTeacherId      String
-  role              String?     @db.VarChar // e.g., 'TEACHING', 'DISCIPLINE', 'REVISION'
-  message           String?     @db.VarChar
+  role              String?  @db.VarChar // e.g., 'TEACHING', 'DISCIPLINE', 'REVISION'
+  message           String?  @db.VarChar
   School_id         String
 
   timetable       timetable @relation(fields: [timetable_id], references: [id])
@@ -318,17 +319,17 @@ model substitution {
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   userId    String
-  action    String   // e.g., "CREATE", "UPDATE", "DELETE", "LOGIN"
-  module    String   // e.g., "SCHOOLS", "STUDIOS", "EXAMS"
+  action    String // e.g., "CREATE", "UPDATE", "DELETE", "LOGIN"
+  module    String // e.g., "SCHOOLS", "STUDIOS", "EXAMS"
   severity  LogSeverity @default(INFO)
-  entityId  String?  // The ID of the affected record
-  details   Json?    // Before/After changes or additional info
+  entityId  String? // The ID of the affected record
+  details   Json? // Before/After changes or additional info
   ipAddress String?
-  createdAt DateTime @default(now())
+  createdAt DateTime    @default(now())
 
-  user      users    @relation(fields: [userId], references: [id])
+  user users @relation(fields: [userId], references: [id])
 }
 
 enum SchoolStatus {
@@ -342,7 +343,7 @@ model SchoolSubscription {
   id             String             @id @default(cuid())
   invoiceId      String?
   schoolId       String
-  month          String             // Format: YYYY-MM
+  month          String // Format: YYYY-MM
   studentCount   Int
   ratePerStudent Float              @default(80)
   amountDue      Float
@@ -354,110 +355,131 @@ model SchoolSubscription {
   updatedAt      DateTime           @updatedAt
   deletedAt      DateTime?
 
-  school         School             @relation(fields: [schoolId], references: [id])
+  school School @relation(fields: [schoolId], references: [id])
 
   @@unique([schoolId, month])
 }
 
 model FeeStructure {
-  id           String   @id @default(cuid())
-  gradeId      String
-  name         String   
-  amount       Float
-  frequency    String   
-  School_id    String
-  grade        grade    @relation(fields: [gradeId], references: [id])
-  School       School   @relation(fields: [School_id], references: [id])
+  id        String @id @default(cuid())
+  gradeId   String
+  name      String
+  amount    Float
+  frequency String
+  School_id String
+  grade     grade  @relation(fields: [gradeId], references: [id])
+  School    School @relation(fields: [School_id], references: [id])
 
   @@unique([gradeId, name])
 }
 
 model StudentFeeBill {
-  id           String             @id @default(cuid())
-  studentId    String
-  month        String             
-  amountDue    Float
-  amountPaid   Float              @default(0)
-  status       SubscriptionStatus @default(PENDING) 
-  dueDate      DateTime?
-  paidAt       DateTime?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  deletedAt    DateTime?
+  id         String             @id @default(cuid())
+  studentId  String
+  month      String
+  amountDue  Float
+  amountPaid Float              @default(0)
+  status     SubscriptionStatus @default(PENDING)
+  dueDate    DateTime?
+  paidAt     DateTime?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  deletedAt  DateTime?
 
-  student      students           @relation(fields: [studentId], references: [id])
+  student students @relation(fields: [studentId], references: [id])
 }
 
 model SalaryStructure {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  baseSalary   Float
-  allowances   Float    @default(0)
-  deductions   Float    @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  baseSalary Float
+  allowances Float    @default(0)
+  deductions Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  user         users    @relation(fields: [userId], references: [id])
+  user users @relation(fields: [userId], references: [id])
 }
 
 model Payroll {
-  id           String             @id @default(cuid())
-  userId       String
-  month        String             
-  baseSalary   Float
-  allowances   Float
-  deductions   Float
-  netSalary    Float
-  status       SubscriptionStatus @default(PENDING)
-  paidAt       DateTime?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  deletedAt    DateTime?
+  id         String             @id @default(cuid())
+  userId     String
+  month      String
+  baseSalary Float
+  allowances Float
+  deductions Float
+  netSalary  Float
+  status     SubscriptionStatus @default(PENDING)
+  paidAt     DateTime?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  deletedAt  DateTime?
 
-  user         users              @relation(fields: [userId], references: [id])
+  user users @relation(fields: [userId], references: [id])
 
   @@unique([userId, month])
 }
 
 model Conversation {
-  id            String         @id @default(cuid())
-  type          ConversationType @default(DIRECT)
-  School_id     String?
-  assignmentId  String?
-  subjectId     String?
-  sectionId     String?
-  status        ConversationStatus @default(ACTIVE)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  deletedAt     DateTime?
-  
-  participants  ConversationParticipant[]
-  messages      Message[]
-  School        School?        @relation(fields: [School_id], references: [id])
+  id           String             @id @default(cuid())
+  type         ConversationType   @default(DIRECT)
+  School_id    String?
+  assignmentId String?
+  subjectId    String?
+  sectionId    String?
+  status       ConversationStatus @default(ACTIVE)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  deletedAt    DateTime?
+
+  participants ConversationParticipant[]
+  messages     Message[]
+  School       School?                   @relation(fields: [School_id], references: [id])
 }
 
 model ConversationParticipant {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   conversationId String
   userId         String
-  joinedAt       DateTime     @default(now())
-  
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
-  user           users        @relation(fields: [userId], references: [id])
+  joinedAt       DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  user         users        @relation(fields: [userId], references: [id])
 
   @@unique([conversationId, userId])
 }
 
+model ProfileChangeRequest {
+  id                     String        @id @default(cuid())
+  userId                 String
+  School_id              String
+  requestedName          String?       @db.VarChar
+  requestedPhoneNo       String?       @db.VarChar
+  requestedQualification String?       @db.VarChar
+  requestedSpecilization String?       @db.VarChar
+  status                 RequestStatus @default(PENDING)
+  reviewedById           String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  user       users  @relation("UserChangeRequests", fields: [userId], references: [id])
+  reviewedBy users? @relation("ReviewedChangeRequests", fields: [reviewedById], references: [id])
+  School     School @relation(fields: [School_id], references: [id])
+
+  @@index([School_id])
+  @@index([userId])
+}
+
 model Message {
-  id             String       @id @default(cuid())
+  id             String    @id @default(cuid())
   conversationId String
   senderId       String
   content        String
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime  @default(now())
   deletedAt      DateTime?
-  
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
-  sender         users        @relation(fields: [senderId], references: [id])
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  sender       users        @relation(fields: [senderId], references: [id])
 }
 
 enum ConversationType {
@@ -478,31 +500,31 @@ enum SubscriptionStatus {
 }
 
 model Exam {
-  id          String         @id @default(cuid())
-  title       String
-  term        String         
-  type        ExamType       @default(INTERNAL)
-  School_id   String
-  School      School         @relation(fields: [School_id], references: [id])
-  schedules   ExamSchedule[]
-  deletedAt   DateTime?
+  id        String         @id @default(cuid())
+  title     String
+  term      String
+  type      ExamType       @default(INTERNAL)
+  School_id String
+  School    School         @relation(fields: [School_id], references: [id])
+  schedules ExamSchedule[]
+  deletedAt DateTime?
 }
 
 model ExamSchedule {
-  id          String       @id @default(cuid())
-  examId      String
-  subjectId   String
-  sectionId   String
-  date        DateTime     @db.Date
-  startTime   String?
-  endTime     String?
-  maxMarks    Int
-  passMarks   Int?
-  exam        Exam         @relation(fields: [examId], references: [id])
-  subject     subject      @relation(fields: [subjectId], references: [id])
-  section     section      @relation(fields: [sectionId], references: [id])
-  results     ExamResult[]
-  deletedAt   DateTime?
+  id        String       @id @default(cuid())
+  examId    String
+  subjectId String
+  sectionId String
+  date      DateTime     @db.Date
+  startTime String?
+  endTime   String?
+  maxMarks  Int
+  passMarks Int?
+  exam      Exam         @relation(fields: [examId], references: [id])
+  subject   subject      @relation(fields: [subjectId], references: [id])
+  section   section      @relation(fields: [sectionId], references: [id])
+  results   ExamResult[]
+  deletedAt DateTime?
 
   @@unique([examId, subjectId, sectionId])
 }
@@ -513,7 +535,7 @@ model ExamResult {
   studentId      String
   obtainedMarks  Float
   remarks        String?
-  grade          String?      
+  grade          String?
   examSchedule   ExamSchedule @relation(fields: [examScheduleId], references: [id])
   student        students     @relation(fields: [studentId], references: [id])
   deletedAt      DateTime?
@@ -529,13 +551,13 @@ enum ExamType {
 }
 
 model AcademicTerm {
-  id        String   @id @default(cuid())
-  name      String   
-  startDate DateTime @db.Date
-  endDate   DateTime @db.Date
-  status    String   @default("ACTIVE")
+  id        String    @id @default(cuid())
+  name      String
+  startDate DateTime  @db.Date
+  endDate   DateTime  @db.Date
+  status    String    @default("ACTIVE")
   School_id String
-  School    School   @relation(fields: [School_id], references: [id])
+  School    School    @relation(fields: [School_id], references: [id])
   deletedAt DateTime?
 }
 
@@ -559,47 +581,49 @@ enum EventType {
 }
 
 model parent {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   users_id    String
   School_id   String
   students_id String
-  School      School   @relation(fields: [School_id], references: [id])
-  students    students @relation(fields: [students_id], references: [id])
-  users       users    @relation(fields: [users_id], references: [id])
+  School      School    @relation(fields: [School_id], references: [id])
+  students    students  @relation(fields: [students_id], references: [id])
+  users       users     @relation(fields: [users_id], references: [id])
   deletedAt   DateTime?
 }
 
 model users {
-  id           String       @id @default(cuid())
-  name         String?      @db.VarChar
-  email        String?      @unique @db.VarChar
-  password     String?      @db.VarChar
-  phoneNo      String?      @db.VarChar
-  fcmToken     String?      @db.VarChar
-  role         UserRole     @default(STUDENT)
-  School_id    String?
-  photoUrl     String?      @db.VarChar
-  globalRating Float        @default(0.0)
-  globalRank   Int?
-  attendance   attendance[]
-  broadcast    broadcast[]
-  parent       parent[]
-  principal    principal[]
-  staff        staff[]
-  students     students[]
-  teachers     teachers[]
-  auditLogs    AuditLog[]
-  leaveApproved leaveRequest[] @relation("ApprovedLeaves")
-  School       School?      @relation(fields: [School_id], references: [id])
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime?    @updatedAt
-  deletedAt    DateTime?
-  salaryStructure SalaryStructure?
-  payrolls     Payroll[]
+  id                         String                    @id @default(cuid())
+  name                       String?                   @db.VarChar
+  email                      String?                   @unique @db.VarChar
+  password                   String?                   @db.VarChar
+  phoneNo                    String?                   @db.VarChar
+  fcmToken                   String?                   @db.VarChar
+  role                       UserRole                  @default(STUDENT)
+  School_id                  String?
+  photoUrl                   String?                   @db.VarChar
+  globalRating               Float                     @default(0.0)
+  globalRank                 Int?
+  attendance                 attendance[]
+  broadcast                  broadcast[]
+  parent                     parent[]
+  principal                  principal[]
+  staff                      staff[]
+  students                   students[]
+  teachers                   teachers[]
+  auditLogs                  AuditLog[]
+  leaveApproved              leaveRequest[]            @relation("ApprovedLeaves")
+  School                     School?                   @relation(fields: [School_id], references: [id])
+  createdAt                  DateTime                  @default(now())
+  updatedAt                  DateTime?                 @updatedAt
+  deletedAt                  DateTime?
+  salaryStructure            SalaryStructure?
+  payrolls                   Payroll[]
   participatingConversations ConversationParticipant[]
-  sentMessages Message[]
-  lastActiveAt DateTime?
-  AcknowledgedEscalations Escalation[] @relation("AcknowledgedEscalations")
+  sentMessages               Message[]
+  profileChangeRequests      ProfileChangeRequest[]    @relation("UserChangeRequests")
+  reviewedChangeRequests     ProfileChangeRequest[]    @relation("ReviewedChangeRequests")
+  lastActiveAt               DateTime?
+  AcknowledgedEscalations    Escalation[]              @relation("AcknowledgedEscalations")
 }
 
 model attendance {
@@ -628,11 +652,11 @@ model leaveRequest {
   approvedById  String?
   School_id     String
   createdAt     DateTime    @default(now())
-  
-  student       students    @relation(fields: [studentId], references: [id])
-  approvedBy    users?      @relation("ApprovedLeaves", fields: [approvedById], references: [id])
-  School        School         @relation(fields: [School_id], references: [id])
-  deletedAt     DateTime?
+
+  student    students  @relation(fields: [studentId], references: [id])
+  approvedBy users?    @relation("ApprovedLeaves", fields: [approvedById], references: [id])
+  School     School    @relation(fields: [School_id], references: [id])
+  deletedAt  DateTime?
 
   @@index([studentId])
   @@index([approvedById])
@@ -650,12 +674,12 @@ model Escalation {
   acknowledgedAt DateTime?
   acknowledgedBy String?
 
-  school         School           @relation(fields: [schoolId], references: [id])
-  acknowledgedByUser users?       @relation("AcknowledgedEscalations", fields: [acknowledgedBy], references: [id])
+  school             School @relation(fields: [schoolId], references: [id])
+  acknowledgedByUser users? @relation("AcknowledgedEscalations", fields: [acknowledgedBy], references: [id])
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  deletedAt      DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
 
 enum EscalationStatus {

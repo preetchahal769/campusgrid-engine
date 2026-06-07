@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, UseGuards, Request } from '@nestjs/common';
 import { TeachersService } from './teachers.service';
 import { CreateTeacherProfileDto } from './dto/create-teacher-profile.dto';
 import { AssignTeacherDto } from './dto/assign-teacher.dto';
@@ -29,6 +29,12 @@ export class TeachersController {
   @Roles(UserRole.TEACHER)
   fetchMyProfile(@Request() req: AuthenticatedRequest) {
     return this.teachersService.findMyProfile(req.user);
+  }
+
+  @Patch('profile')
+  @Roles(UserRole.TEACHER)
+  updateProfile(@Body() updateDto: any, @Request() req: AuthenticatedRequest) {
+    return this.teachersService.updateProfile(req.user, updateDto);
   }
 
   @Get()
