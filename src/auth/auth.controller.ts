@@ -52,6 +52,7 @@ export class AuthController {
 
     res.clearCookie('access_token', cookieOptions);
     res.clearCookie('refresh_token', cookieOptions);
+    res.clearCookie('cg_session', { ...cookieOptions, httpOnly: false });
 
     return { message: 'Logged out successfully' };
   }
@@ -74,6 +75,14 @@ export class AuthController {
       sameSite: 'lax',
       domain: isProd ? cookieDomain : undefined,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    res.cookie('cg_session', 'true', {
+      httpOnly: false, // Frontend needs to read this!
+      secure: isProd,
+      sameSite: 'lax',
+      domain: isProd ? cookieDomain : undefined,
+      maxAge: 15 * 60 * 1000, // Matches access_token (15 mins)
     });
   }
 
