@@ -18,19 +18,31 @@ export class AuthController {
     
     this.setTokens(res, result.access_token, result.refresh_token);
  
-    return { user: result.user };
+    return { 
+      user: result.user,
+      tokens: {
+        accessToken: result.access_token,
+        refreshToken: result.refresh_token
+      }
+    };
   }
 
   @Public()
   @Post('refresh')
-  async refresh(@Request() req: AuthenticatedRequest, @Res({ passthrough: true }) res: Response) {
-    const refreshToken = req.cookies['refresh_token'];
+  async refresh(@Request() req: AuthenticatedRequest, @Body() body: { refreshToken?: string }, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = body.refreshToken || req.cookies['refresh_token'];
     if (!refreshToken) throw new UnauthorizedException('No refresh token provided');
 
     const result = await this.authService.refreshTokens(refreshToken);
     this.setTokens(res, result.access_token, result.refresh_token);
 
-    return { message: 'Tokens refreshed' };
+    return { 
+      message: 'Tokens refreshed',
+      tokens: {
+        accessToken: result.access_token,
+        refreshToken: result.refresh_token
+      }
+    };
   }
 
   @Post('logout')
