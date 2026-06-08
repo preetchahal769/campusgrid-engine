@@ -146,27 +146,82 @@ export class UsersService {
     });
   }
 
-  async updateProfile(userId: string, updateDto: any) {
+  async updateProfile(currentUser: AuthenticatedUser, updateDto: any) {
+    const existingUser = await this.prisma.users.findUnique({ where: { id: currentUser.id } });
+    if (!existingUser) throw new ForbiddenException('User not found');
+
+    const isFirstTimePhone = !existingUser.phoneNo && updateDto.phoneNo;
+
+    // If it's a first time phone entry, update directly but ALSO create a pending request
+    if (isFirstTimePhone) {
+      const user = await this.prisma.users.update({
+        where: { id: currentUser.id },
+        data: {
+          phoneNo: updateDto.phoneNo,
+        },
+        select: {
+          id: true, name: true, email: true, phoneNo: true, role: true, photoUrl: true,
+        },
+      });
+
+      if (currentUser.School_id) {
+        await this.prisma.profileChangeRequest.create({
+          data: {
+            userId: currentUser.id,
+            School_id: currentUser.School_id,
+            requestedPhoneNo: updateDto.phoneNo,
+            status: 'PENDING',
+          }
+        });
+      }
+
+      if (user.photoUrl && !user.photoUrl.startsWith('http')) {
+        user.photoUrl = await this.storageService.getPresignedUrl(user.photoUrl);
+      }
+      return user;
+    }
+
+    // Otherwise, it's a regular update. Intercept it for approval if they have a school.
+    if (currentUser.School_id && (updateDto.name || updateDto.phoneNo)) {
+      await this.prisma.profileChangeRequest.create({
+        data: {
+          userId: currentUser.id,
+          School_id: currentUser.School_id,
+          requestedName: updateDto.name !== existingUser.name ? updateDto.name : undefined,
+          requestedPhoneNo: updateDto.phoneNo !== existingUser.phoneNo ? updateDto.phoneNo : undefined,
+          status: 'PENDING',
+        }
+      });
+
+      // Return the original user without changes since it's pending
+      return {
+        id: existingUser.id,
+        name: existingUser.name,
+        email: existingUser.email,
+        phoneNo: existingUser.phoneNo,
+        role: existingUser.role,
+        photoUrl: existingUser.photoUrl && !existingUser.photoUrl.startsWith('http') 
+          ? await this.storageService.getPresignedUrl(existingUser.photoUrl) 
+          : existingUser.photoUrl,
+        pendingApproval: true
+      };
+    }
+
+    // For Super Admins or users without a school, just update directly
     const user = await this.prisma.users.update({
-      where: { id: userId },
+      where: { id: currentUser.id },
       data: {
         name: updateDto.name,
         phoneNo: updateDto.phoneNo,
       },
       select: {
-        id: true,
-        name: true,
-        email: true,
-        phoneNo: true,
-        role: true,
-        photoUrl: true,
+        id: true, name: true, email: true, phoneNo: true, role: true, photoUrl: true,
       },
     });
 
     if (user.photoUrl && !user.photoUrl.startsWith('http')) {
       user.photoUrl = await this.storageService.getPresignedUrl(user.photoUrl);
     }
-
     return user;
   }
 

@@ -25,6 +25,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { SystemModule } from './modules/system/system.module';
 import { SupportModule } from './modules/support/support.module';
 import { BugReportsModule } from './modules/bug-reports/bug-reports.module';
+import { ApprovalsModule } from './modules/approvals/approvals.module';
 import { SentryModule, SentryGlobalFilter } from '@sentry/nestjs/setup';
 
 @Module({
@@ -64,6 +65,7 @@ import { SentryModule, SentryGlobalFilter } from '@sentry/nestjs/setup';
     SystemModule,
     SupportModule,
     BugReportsModule,
+    ApprovalsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -45,7 +45,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Patch('profile')
   updateProfile(@Body() updateProfileDto: UpdateProfileDto, @Request() req: AuthenticatedRequest) {
-    return this.usersService.updateProfile(req.user.id, updateProfileDto);
+    return this.usersService.updateProfile(req.user, updateProfileDto);
   }
 
   @UseGuards(JwtAuthGuard)

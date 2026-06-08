@@ -60,15 +60,27 @@ export class AuthService {
     const key = keys[0];
     const userId = key.split(':')[1];
 
-    // 2. Delete the old token (Rotation)
-    await this.redisService.del(key);
+    // 2. Fetch the value. If it's not '1', it means it was already rotated recently
+    // and this is a concurrent request (e.g., from a second browser tab).
+    // In that case, we return the cached new tokens!
+    const value = await this.redisService.get(key);
+    if (value && value !== '1') {
+      return JSON.parse(value);
+    }
 
     // 3. Get user details
     const user = await this.prisma.users.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException();
 
     // 4. Issue new pair
-    return this.issueTokens(user.id, user.role);
+    const newTokens = await this.issueTokens(user.id, user.role);
+
+    // 5. Instead of deleting the old token immediately, we store the new tokens
+    // under the old token's key with a short 60-second TTL. This acts as a "Grace Period"
+    // to satisfy any concurrent refresh requests from other tabs!
+    await this.redisService.set(key, JSON.stringify(newTokens), 60);
+
+    return newTokens;
   }
 
   async logout(userId: string, refreshToken: string) {
@@ -104,5 +116,47 @@ export class AuthService {
 
     // In a real app, generate token and send email here
     return { message: 'If this email is registered, you will receive a reset link.' };
+  }
+
+  async getDebugInfo(userId: string, refreshToken: string | undefined, accessToken: string | undefined) {
+    let refreshTokenTtl = -1;
+    if (refreshToken) {
+      refreshTokenTtl = await this.redisService.ttl(`rt:${userId}:${refreshToken}`);
+    }
+
+    let accessTokenTtl = -1;
+    let rawJwt = null;
+    if (accessToken) {
+      try {
+        const decoded: any = this.jwtService.decode(accessToken);
+        rawJwt = decoded;
+        if (decoded && decoded.exp) {
+          accessTokenTtl = Math.max(0, decoded.exp - Math.floor(Date.now() / 1000));
+        }
+      } catch (e) {
+        // invalid token
+      }
+    }
+
+    let dbStatus = 'ok';
+    let dbLatency = 0;
+    try {
+      const start = Date.now();
+      await this.prisma.$queryRaw`SELECT 1`;
+      dbLatency = Date.now() - start;
+    } catch (e) {
+      dbStatus = 'error';
+    }
+
+    return {
+      environment: process.env.NODE_ENV || 'development',
+      accessTokenTtl,
+      refreshTokenTtl,
+      rawJwt,
+      backendHealth: {
+        db: dbStatus,
+        dbLatencyMs: dbLatency,
+      }
+    };
   }
 }

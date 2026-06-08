@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Res, UseGuards, Request, UnauthorizedException, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, Res, UseGuards, Request, UnauthorizedException, HttpCode, HttpStatus, Get } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -82,7 +82,7 @@ export class AuthController {
       secure: isProd,
       sameSite: 'lax',
       domain: isProd ? cookieDomain : undefined,
-      maxAge: 15 * 60 * 1000, // Matches access_token (15 mins)
+      maxAge: 7 * 24 * 60 * 60 * 1000, // Matches refresh_token (7 days)
     });
   }
 
@@ -100,5 +100,13 @@ export class AuthController {
   @Post('forgot-password')
   forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     return this.authService.forgotPassword(forgotPasswordDto.email);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('debug')
+  getDebugInfo(@Request() req: AuthenticatedRequest) {
+    const refreshToken = req.cookies['refresh_token'];
+    const accessToken = req.cookies['access_token'];
+    return this.authService.getDebugInfo(req.user.id, refreshToken, accessToken);
   }
 }
