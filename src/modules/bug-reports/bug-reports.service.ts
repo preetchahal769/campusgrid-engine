@@ -35,7 +35,7 @@ export class BugReportsService {
     return Promise.all(
       reports.map(async (report) => {
         if (report.screenshotUrl && !report.screenshotUrl.startsWith('http')) {
-          report.screenshotUrl = await this.storageService.getPresignedUrl(report.screenshotUrl);
+          report.screenshotUrl = await this.storageService.getPresignedUrl(report.screenshotUrl, 604800);
         }
         return report;
       }),
@@ -52,7 +52,7 @@ export class BugReportsService {
     }
 
     if (report.screenshotUrl && !report.screenshotUrl.startsWith('http')) {
-      report.screenshotUrl = await this.storageService.getPresignedUrl(report.screenshotUrl);
+      report.screenshotUrl = await this.storageService.getPresignedUrl(report.screenshotUrl, 604800);
     }
 
     return report;
