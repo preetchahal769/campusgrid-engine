@@ -20,6 +20,7 @@ async function bootstrap() {
     ...envOrigins,
     'http://localhost:3000',
     'http://localhost',
+    'https://localhost',
     'capacitor://localhost'
   ];
 
