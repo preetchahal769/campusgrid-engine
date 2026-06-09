@@ -1,4 +1,5 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { BugReportStatus } from '@prisma/client';
 
 export class CreateBugReportDto {
   @IsOptional()
@@ -19,6 +20,6 @@ export class CreateBugReportDto {
 }
 
 export class UpdateBugReportStatusDto {
-  @IsString()
-  status: string;
+  @IsEnum(BugReportStatus)
+  status: BugReportStatus;
 }

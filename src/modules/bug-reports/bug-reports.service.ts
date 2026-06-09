@@ -108,7 +108,7 @@ export class BugReportsService {
     return this.prisma.bugReport.update({
       where: { id },
       data: { 
-        status: 'REOPENED',
+        status: BugReportStatus.REOPENED,
         description: (report.description || '') + appendText 
       },
     });
@@ -138,7 +138,7 @@ export class BugReportsService {
     return this.prisma.bugReport.update({
       where: { id },
       data: { 
-        status: 'CLOSED',
+        status: BugReportStatus.CLOSED,
         screenshotUrl: null 
       },
     });
@@ -150,7 +150,7 @@ export class BugReportsService {
 
     const staleReports = await this.prisma.bugReport.findMany({
       where: {
-        status: 'SOLVED',
+        status: BugReportStatus.SOLVED,
         updatedAt: {
           lt: sevenDaysAgo
         }
@@ -170,7 +170,7 @@ export class BugReportsService {
       await this.prisma.bugReport.update({
         where: { id: report.id },
         data: {
-          status: 'CLOSED',
+          status: BugReportStatus.CLOSED,
           screenshotUrl: null
         }
       });
