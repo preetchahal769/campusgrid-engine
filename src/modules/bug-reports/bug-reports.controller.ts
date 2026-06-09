@@ -58,6 +58,15 @@ export class BugReportsController {
     return this.bugReportsService.reopenReport(id, req.user.email, body.message);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/close')
+  closeReport(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest
+  ) {
+    return this.bugReportsService.closeReport(id, req.user.email);
+  }
+
   @Roles('SUPER_ADMIN')
   @Get()
   findAll() {

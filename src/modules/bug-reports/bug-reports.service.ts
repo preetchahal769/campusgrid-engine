@@ -113,4 +113,70 @@ export class BugReportsService {
       },
     });
   }
+
+  async closeReport(id: string, email: string) {
+    const report = await this.prisma.bugReport.findUnique({
+      where: { id },
+    });
+
+    if (!report) {
+      throw new NotFoundException('Bug report not found');
+    }
+
+    if (report.userEmail !== email) {
+      throw new NotFoundException('Bug report not found for this user');
+    }
+
+    if (report.screenshotUrl) {
+      try {
+        await this.storageService.deleteFile(report.screenshotUrl);
+      } catch (err) {
+        console.error(`Failed to delete screenshot from S3 for bug ${id}`, err);
+      }
+    }
+
+    return this.prisma.bugReport.update({
+      where: { id },
+      data: { 
+        status: 'CLOSED',
+        screenshotUrl: null 
+      },
+    });
+  }
+
+  async autoCloseStaleReports() {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const staleReports = await this.prisma.bugReport.findMany({
+      where: {
+        status: 'SOLVED',
+        updatedAt: {
+          lt: sevenDaysAgo
+        }
+      }
+    });
+
+    let closedCount = 0;
+    for (const report of staleReports) {
+      if (report.screenshotUrl) {
+        try {
+          await this.storageService.deleteFile(report.screenshotUrl);
+        } catch (err) {
+          console.error(`Cron: Failed to delete S3 screenshot for stale bug ${report.id}`, err);
+        }
+      }
+
+      await this.prisma.bugReport.update({
+        where: { id: report.id },
+        data: {
+          status: 'CLOSED',
+          screenshotUrl: null
+        }
+      });
+      closedCount++;
+    }
+
+    return closedCount;
+  }
 }
