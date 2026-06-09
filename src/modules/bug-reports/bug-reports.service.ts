@@ -72,4 +72,45 @@ export class BugReportsService {
       data: { status: updateDto.status },
     });
   }
+
+  async findByEmail(email: string) {
+    const reports = await this.prisma.bugReport.findMany({
+      where: { userEmail: email },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    return Promise.all(
+      reports.map(async (report) => {
+        if (report.screenshotUrl && !report.screenshotUrl.startsWith('http')) {
+          report.screenshotUrl = await this.storageService.getPresignedUrl(report.screenshotUrl, 604800);
+        }
+        return report;
+      }),
+    );
+  }
+
+  async reopenReport(id: string, email: string, message: string) {
+    const report = await this.prisma.bugReport.findUnique({
+      where: { id },
+    });
+
+    if (!report) {
+      throw new NotFoundException('Bug report not found');
+    }
+
+    if (report.userEmail !== email) {
+      throw new NotFoundException('Bug report not found for this user');
+    }
+
+    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const appendText = `\n\n[REOPENED - ${today}]: ${message}`;
+
+    return this.prisma.bugReport.update({
+      where: { id },
+      data: { 
+        status: 'REOPENED',
+        description: (report.description || '') + appendText 
+      },
+    });
+  }
 }

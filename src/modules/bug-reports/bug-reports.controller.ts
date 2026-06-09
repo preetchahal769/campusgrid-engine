@@ -1,10 +1,12 @@
-import { Controller, Post, Body, Get, Param, Patch, UseInterceptors, UploadedFile, Query, Res } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Patch, UseInterceptors, UploadedFile, Query, Res, UseGuards, Request } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { BugReportsService } from './bug-reports.service';
 import { CreateBugReportDto, UpdateBugReportStatusDto } from './dto/bug-report.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
 
 // No global AuthGuard here because we want to allow guests on the login page to report bugs
 @Controller('bug-reports')
@@ -38,6 +40,22 @@ export class BugReportsController {
     @UploadedFile() file?: Express.Multer.File,
   ) {
     return this.bugReportsService.create(createBugReportDto, file);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('my-reports')
+  findMyReports(@Request() req: AuthenticatedRequest) {
+    return this.bugReportsService.findByEmail(req.user.email);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/reopen')
+  reopenReport(
+    @Param('id') id: string,
+    @Body() body: { message: string },
+    @Request() req: AuthenticatedRequest
+  ) {
+    return this.bugReportsService.reopenReport(id, req.user.email, body.message);
   }
 
   @Roles('SUPER_ADMIN')
