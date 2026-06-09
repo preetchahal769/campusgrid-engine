@@ -17,11 +17,7 @@ async function bootstrap() {
   // Enable CORS (Cross-Origin Resource Sharing)
   const envOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
   const allowedOrigins = [
-    ...envOrigins,
-    'http://localhost:3000',
-    'http://localhost',
-    'https://localhost',
-    'capacitor://localhost'
+    ...envOrigins
   ];
 
   app.enableCors({
