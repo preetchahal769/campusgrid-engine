@@ -1,25 +1,38 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
-import { BugReportStatus } from '@prisma/client';
+import { IsString, IsOptional, IsEnum, IsUrl } from 'class-validator';
+
+export enum BugReportStatus {
+  OPEN = 'OPEN',
+  WORKING = 'WORKING',
+  SOLVED = 'SOLVED',
+  REOPENED = 'REOPENED',
+  CLOSED = 'CLOSED',
+}
 
 export class CreateBugReportDto {
-  @IsOptional()
   @IsString()
+  @IsOptional()
   userEmail?: string;
 
-  @IsOptional()
   @IsString()
+  @IsOptional()
   userRole?: string;
 
+  @IsUrl()
   @IsOptional()
-  @IsString()
   url?: string;
 
-  @IsOptional()
   @IsString()
+  @IsOptional()
   description?: string;
+
+  @IsUrl()
+  @IsOptional()
+  screenshotUrl?: string;
 }
 
 export class UpdateBugReportStatusDto {
-  @IsEnum(BugReportStatus)
+  @IsEnum(BugReportStatus, {
+    message: 'status must be a valid BugReportStatus value',
+  })
   status: BugReportStatus;
 }
