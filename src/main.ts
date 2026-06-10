@@ -14,7 +14,7 @@ async function bootstrap() {
   // Enable cookie parsing
   app.use(cookieParser());
 
-  // Enable CORS (Cross-Origin Resource Sharing)
+  // Enable CORS (Cross-Origin Resource Sharin
   const envOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
   const allowedOrigins = [
     ...envOrigins,
