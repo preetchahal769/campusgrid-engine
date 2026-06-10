@@ -2,6 +2,8 @@ name: CampusGrid Engine — CI/CD Pipeline
 
 # Triggers on every push to main.
 # Staging deploys automatically. Production requires manual approval.
+# Backend secrets (DATABASE_URL, JWT_SECRET, REDIS_URL, FIREBASE_*)
+# are NEVER in this workflow — they live only in .env files on each server.
 on:
   push:
     branches:
@@ -11,12 +13,38 @@ env:
   IMAGE_NAME: ghcr.io/preetchahal769/campusgrid-engine
 
 jobs:
-  # ─────────────────────────────────────────────────────────────────
-  # JOB 1 — Build & Push Staging Image + Deploy to Staging
-  # ─────────────────────────────────────────────────────────────────
-  deploy-staging:
-    name: 📦 Build & 🚀 Deploy to Staging
+  # ───────────────────────────────────────────────────────────────
+  # JOB 1 — Build testing image (smoke test — never pushed)
+  # Runs on every push to main to catch build-breaking changes early.
+  # ───────────────────────────────────────────────────────────────
+  build-testing:
+    name: 🧪 Build Testing Image
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build testing-env (verify only — not pushed)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: testing-env
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ───────────────────────────────────────────────────────────────
+  # JOB 2 — Build & push staging image to GHCR
+  # Tagged as :staging-{git-sha} — every deploy is commit-traceable.
+  # No build-args needed — all secrets live on the server in .env.staging
+  # ───────────────────────────────────────────────────────────────
+  build-staging:
+    name: 📦 Build & Push Staging Image
+    runs-on: ubuntu-latest
+    needs: build-testing
     outputs:
       image_tag: ${{ steps.tag.outputs.value }}
     steps:
@@ -47,6 +75,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # ───────────────────────────────────────────────────────────────
+  # JOB 3 — Deploy to staging server via SSH
+  # Pulls the new image and restarts only the backend service.
+  # Entrypoint automatically runs prisma migrate deploy on start.
+  # Production is not touched.
+  # ───────────────────────────────────────────────────────────────
+  deploy-staging:
+    name: 🚀 Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-staging
+    steps:
       - name: SSH into staging server & deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -54,37 +93,22 @@ jobs:
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
-            set -e
-            IMAGE="${{ env.IMAGE_NAME }}:staging-${{ github.sha }}"
-
-            echo "🔐 Logging into GHCR..."
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u preetchahal769 --password-stdin
-
-            echo "🧹 Freeing disk space before pull..."
+            cd /opt/campusgrid
             docker system prune -a -f --volumes 2>/dev/null || true
+            docker pull ${{ env.IMAGE_NAME }}:${{ needs.build-staging.outputs.image_tag }}
+            export BACKEND_TAG=${{ needs.build-staging.outputs.image_tag }}
+            echo "BACKEND_TAG=${BACKEND_TAG}" > /opt/campusgrid/.backend-tag
+            docker compose up -d --no-deps --force-recreate backend
+            docker system prune -f
+            echo "✅ Staging engine deployed: ${BACKEND_TAG}"
 
-            echo "📥 Pulling new image: ${IMAGE}"
-            docker pull ${IMAGE}
-
-            echo "🛑 Stopping old backend container..."
-            docker stop campusgrid-backend-staging 2>/dev/null || true
-            docker rm   campusgrid-backend-staging 2>/dev/null || true
-
-            echo "🚀 Starting new backend container..."
-            docker run -d \
-              --name campusgrid-backend-staging \
-              --restart unless-stopped \
-              -p 127.0.0.1:4000:4000 \
-              --env-file /opt/campusgrid/.env.staging \
-              -e NODE_TLS_REJECT_UNAUTHORIZED=0 \
-              ${IMAGE}
-
-            echo "✅ Staging deployed: staging-${{ github.sha }}"
-            docker ps --filter name=campusgrid-backend-staging
-
-  # ─────────────────────────────────────────────────────────────────
-  # JOB 2 — Manual approval gate before production
-  # ─────────────────────────────────────────────────────────────────
+  # ───────────────────────────────────────────────────────────────
+  # JOB 4 — Manual approval gate
+  # Workflow pauses here. Go to Actions → Review deployments → Approve.
+  # Requires the 'production' GitHub Environment to be configured
+  # with at least one required reviewer.
+  # ───────────────────────────────────────────────────────────────
   approve-production:
     name: ✋ Approve Production Deploy
     runs-on: ubuntu-latest
@@ -94,13 +118,17 @@ jobs:
       - name: Approval granted — proceeding to production build
         run: echo "Production deployment approved for commit ${{ github.sha }}"
 
-  # ─────────────────────────────────────────────────────────────────
-  # JOB 3 — Build & Push Production Image + Deploy to Production
-  # ─────────────────────────────────────────────────────────────────
-  deploy-production:
-    name: 📦 Build & 🚀 Deploy to Production
+  # ───────────────────────────────────────────────────────────────
+  # JOB 5 — Build & push production image to GHCR
+  # Built from the exact same commit SHA as staging.
+  # Tagged as :prod-{git-sha}.
+  # ───────────────────────────────────────────────────────────────
+  build-production:
+    name: 📦 Build & Push Production Image
     runs-on: ubuntu-latest
     needs: approve-production
+    outputs:
+      image_tag: ${{ steps.tag.outputs.value }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -115,16 +143,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
 
+      - name: Generate Image Tag
+        id: tag
+        run: echo "value=prod-${{ github.sha }}" >> $GITHUB_OUTPUT
+
       - name: Build & Push Production Image
         uses: docker/build-push-action@v5
         with:
           context: .
           target: production-env
           push: true
-          tags: ${{ env.IMAGE_NAME }}:prod-${{ github.sha }}
+          tags: ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.value }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # ───────────────────────────────────────────────────────────────
+  # JOB 6 — Deploy to production server via SSH
+  # Uses a completely separate SSH key from staging (PROD_SSH_KEY).
+  # Staging is not touched. Entrypoint auto-runs migrations on start.
+  # ───────────────────────────────────────────────────────────────
+  deploy-production:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-production
+    steps:
       - name: SSH into production server & deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -132,29 +174,12 @@ jobs:
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
           script: |
-            set -e
-            IMAGE="${{ env.IMAGE_NAME }}:prod-${{ github.sha }}"
-
-            echo "🔐 Logging into GHCR..."
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u preetchahal769 --password-stdin
-
-            echo "📥 Pulling new image: ${IMAGE}"
-            docker pull ${IMAGE}
-
-            echo "🛑 Stopping old backend container..."
-            docker stop campusgrid-backend 2>/dev/null || true
-            docker rm   campusgrid-backend 2>/dev/null || true
-
-            echo "🚀 Starting new backend container..."
-            docker run -d \
-              --name campusgrid-backend \
-              --restart unless-stopped \
-              -p 127.0.0.1:4000:4000 \
-              --env-file /opt/campusgrid/.env.production \
-              ${IMAGE}
-
-            echo "🧹 Cleaning up old images..."
-            docker image prune -f
-
-            echo "✅ Production deployed: prod-${{ github.sha }}"
-            docker ps --filter name=campusgrid-backend
+            cd /opt/campusgrid
+            docker system prune -a -f --volumes 2>/dev/null || true
+            docker pull ${{ env.IMAGE_NAME }}:${{ needs.build-production.outputs.image_tag }}
+            export BACKEND_TAG=${{ needs.build-production.outputs.image_tag }}
+            echo "BACKEND_TAG=${BACKEND_TAG}" > /opt/campusgrid/.backend-tag
+            docker compose up -d --no-deps --force-recreate backend
+            docker system prune -f
+            echo "✅ Production engine deployed: ${BACKEND_TAG}"
