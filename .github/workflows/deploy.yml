@@ -60,6 +60,9 @@ jobs:
             echo "🔐 Logging into GHCR..."
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u preetchahal769 --password-stdin
 
+            echo "🧹 Freeing disk space before pull..."
+            docker system prune -a -f --volumes 2>/dev/null || true
+
             echo "📥 Pulling new image: ${IMAGE}"
             docker pull ${IMAGE}
 
@@ -75,9 +78,6 @@ jobs:
               --env-file /opt/campusgrid/.env.staging \
               -e NODE_TLS_REJECT_UNAUTHORIZED=0 \
               ${IMAGE}
-
-            echo "🧹 Cleaning up old images..."
-            docker image prune -f
 
             echo "✅ Staging deployed: staging-${{ github.sha }}"
             docker ps --filter name=campusgrid-backend-staging
