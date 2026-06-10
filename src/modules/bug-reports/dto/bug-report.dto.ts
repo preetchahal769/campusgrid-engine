@@ -1,38 +1,24 @@
-import { IsString, IsOptional, IsEnum, IsUrl } from 'class-validator';
-
-export enum BugReportStatus {
-  OPEN = 'OPEN',
-  WORKING = 'WORKING',
-  SOLVED = 'SOLVED',
-  REOPENED = 'REOPENED',
-  CLOSED = 'CLOSED',
-}
+import { IsString, IsOptional } from 'class-validator';
 
 export class CreateBugReportDto {
-  @IsString()
   @IsOptional()
+  @IsString()
   userEmail?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   userRole?: string;
 
-  @IsUrl()
   @IsOptional()
+  @IsString()
   url?: string;
 
+  @IsOptional()
   @IsString()
-  @IsOptional()
   description?: string;
-
-  @IsUrl()
-  @IsOptional()
-  screenshotUrl?: string;
 }
 
 export class UpdateBugReportStatusDto {
-  @IsEnum(BugReportStatus, {
-    message: 'status must be a valid BugReportStatus value',
-  })
-  status: BugReportStatus;
+  @IsString()
+  status: string;
 }

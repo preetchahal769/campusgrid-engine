@@ -84,6 +84,6 @@ export class BugReportsController {
     @Param('id') id: string,
     @Body() updateDto: UpdateBugReportStatusDto,
   ) {
-    return this.bugReportsService.updateStatus(id, updateDto.status);
+    return this.bugReportsService.updateStatus(id, updateDto);
   }
 }

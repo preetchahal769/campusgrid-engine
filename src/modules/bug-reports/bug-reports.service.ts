@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { StorageService } from '../storage/storage.service';
-import { CreateBugReportDto, UpdateBugReportStatusDto, BugReportStatus } from './dto/bug-report.dto';
+import { CreateBugReportDto, UpdateBugReportStatusDto } from './dto/bug-report.dto';
 
 @Injectable()
 export class BugReportsService {
@@ -58,7 +58,7 @@ export class BugReportsService {
     return report;
   }
 
-  async updateStatus(id: string, status: BugReportStatus) {
+  async updateStatus(id: string, updateDto: UpdateBugReportStatusDto) {
     const report = await this.prisma.bugReport.findUnique({
       where: { id },
     });
@@ -69,7 +69,7 @@ export class BugReportsService {
 
     return this.prisma.bugReport.update({
       where: { id },
-      data: { status },
+      data: { status: updateDto.status },
     });
   }
 
@@ -108,7 +108,7 @@ export class BugReportsService {
     return this.prisma.bugReport.update({
       where: { id },
       data: { 
-        status: BugReportStatus.REOPENED,
+        status: 'REOPENED',
         description: (report.description || '') + appendText 
       },
     });
@@ -138,7 +138,7 @@ export class BugReportsService {
     return this.prisma.bugReport.update({
       where: { id },
       data: { 
-        status: BugReportStatus.CLOSED,
+        status: 'CLOSED',
         screenshotUrl: null 
       },
     });
@@ -150,7 +150,7 @@ export class BugReportsService {
 
     const staleReports = await this.prisma.bugReport.findMany({
       where: {
-        status: BugReportStatus.SOLVED,
+        status: 'SOLVED',
         updatedAt: {
           lt: sevenDaysAgo
         }
@@ -170,7 +170,7 @@ export class BugReportsService {
       await this.prisma.bugReport.update({
         where: { id: report.id },
         data: {
-          status: BugReportStatus.CLOSED,
+          status: 'CLOSED',
           screenshotUrl: null
         }
       });

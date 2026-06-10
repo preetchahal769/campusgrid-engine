@@ -95,13 +95,10 @@ jobs:
           script: |
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u preetchahal769 --password-stdin
             cd /opt/campusgrid
-            docker system prune -a -f --volumes 2>/dev/null || true
             docker pull ${{ env.IMAGE_NAME }}:${{ needs.build-staging.outputs.image_tag }}
-            export BACKEND_TAG=${{ needs.build-staging.outputs.image_tag }}
-            echo "BACKEND_TAG=${BACKEND_TAG}" > /opt/campusgrid/.backend-tag
-            docker compose up -d --no-deps --force-recreate backend
+            BACKEND_TAG=${{ needs.build-staging.outputs.image_tag }} docker compose up -d --no-deps backend
             docker system prune -f
-            echo "✅ Staging engine deployed: ${BACKEND_TAG}"
+            echo "✅ Staging engine deployed: ${{ needs.build-staging.outputs.image_tag }}"
 
   # ───────────────────────────────────────────────────────────────
   # JOB 4 — Manual approval gate
@@ -176,10 +173,7 @@ jobs:
           script: |
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u preetchahal769 --password-stdin
             cd /opt/campusgrid
-            docker system prune -a -f --volumes 2>/dev/null || true
             docker pull ${{ env.IMAGE_NAME }}:${{ needs.build-production.outputs.image_tag }}
-            export BACKEND_TAG=${{ needs.build-production.outputs.image_tag }}
-            echo "BACKEND_TAG=${BACKEND_TAG}" > /opt/campusgrid/.backend-tag
-            docker compose up -d --no-deps --force-recreate backend
+            BACKEND_TAG=${{ needs.build-production.outputs.image_tag }} docker compose up -d --no-deps backend
             docker system prune -f
-            echo "✅ Production engine deployed: ${BACKEND_TAG}"
+            echo "✅ Production engine deployed: ${{ needs.build-production.outputs.image_tag }}"
