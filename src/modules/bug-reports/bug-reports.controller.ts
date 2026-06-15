@@ -79,11 +79,13 @@ export class BugReportsController {
     return this.bugReportsService.findOne(id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(':id/status')
   updateStatus(
     @Param('id') id: string,
     @Body() updateDto: UpdateBugReportStatusDto,
+    @Request() req: AuthenticatedRequest
   ) {
-    return this.bugReportsService.updateStatus(id, updateDto);
+    return this.bugReportsService.updateStatus(id, updateDto, req.user.email, req.user.role);
   }
 }

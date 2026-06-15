@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { CreateBugReportDto, UpdateBugReportStatusDto } from './dto/bug-report.dto';
@@ -58,7 +58,12 @@ export class BugReportsService {
     return report;
   }
 
-  async updateStatus(id: string, updateDto: UpdateBugReportStatusDto) {
+  async updateStatus(
+    id: string,
+    updateDto: UpdateBugReportStatusDto,
+    userEmail: string,
+    userRole: string,
+  ) {
     const report = await this.prisma.bugReport.findUnique({
       where: { id },
     });
@@ -67,9 +72,55 @@ export class BugReportsService {
       throw new NotFoundException('Bug report not found');
     }
 
+    const newStatus = updateDto.status.toUpperCase();
+
+    if (newStatus === 'CLOSED') {
+      if (report.userEmail !== userEmail && userRole !== 'SUPER_ADMIN') {
+        throw new ForbiddenException('Only the reporter or a super admin can close this bug report');
+      }
+
+      if (report.screenshotUrl) {
+        try {
+          await this.storageService.deleteFile(report.screenshotUrl);
+        } catch (err) {
+          console.error(`Failed to delete screenshot from S3 for bug ${id}`, err);
+        }
+      }
+
+      return this.prisma.bugReport.update({
+        where: { id },
+        data: { 
+          status: 'CLOSED',
+          screenshotUrl: null,
+        },
+      });
+    }
+
+    if (newStatus === 'REOPENED') {
+      if (report.userEmail !== userEmail) {
+        throw new ForbiddenException('Only the reporter can reopen this bug report');
+      }
+
+      return this.prisma.bugReport.update({
+        where: { id },
+        data: { status: 'REOPENED' },
+      });
+    }
+
+    if (newStatus === 'SOLVED' || newStatus === 'OPEN') {
+      if (userRole !== 'SUPER_ADMIN') {
+        throw new ForbiddenException('Only a super admin can set this bug report status');
+      }
+
+      return this.prisma.bugReport.update({
+        where: { id },
+        data: { status: newStatus },
+      });
+    }
+
     return this.prisma.bugReport.update({
       where: { id },
-      data: { status: updateDto.status },
+      data: { status: newStatus },
     });
   }
 
@@ -145,14 +196,14 @@ export class BugReportsService {
   }
 
   async autoCloseStaleReports() {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const fifteenDaysAgo = new Date();
+    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
 
     const staleReports = await this.prisma.bugReport.findMany({
       where: {
         status: 'SOLVED',
         updatedAt: {
-          lt: sevenDaysAgo
+          lt: fifteenDaysAgo
         }
       }
     });
