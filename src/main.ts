@@ -8,8 +8,10 @@ import cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
-  // Enable security headers
-  app.use(helmet());
+  // Enable security headers (configured for cross-origin APIs)
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }));
   
   // Enable cookie parsing
   app.use(cookieParser());
