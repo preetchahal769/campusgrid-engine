@@ -24,9 +24,13 @@ export class AttendanceController {
     @Query('date') date: string,
     @Query('users_id') users_id: string,
     @Query('section_id') section_id: string,
+    @Query('range') range: string,
+    @Query('month') month: string,
+    @Query('year') year: string,
+    @Query('targetRole') targetRole: UserRole,
     @Request() req: AuthenticatedRequest
   ) {
-    return this.attendanceService.fetchAttendance({ date, users_id, section_id }, req.user);
+    return this.attendanceService.fetchAttendance({ date, users_id, section_id, range, month, year, targetRole }, req.user);
   }
 
   @Post('class/:sectionId')
@@ -45,12 +49,16 @@ export class AttendanceController {
   fetchMyAttendance(
     @Query('month') month: string,
     @Query('year') year: string,
+    @Query('range') range: string,
+    @Query('date') date: string,
     @Request() req: AuthenticatedRequest
   ) {
     return this.attendanceService.fetchMyAttendance(
-      req.user, 
-      month ? parseInt(month) : undefined, 
-      year ? parseInt(year) : undefined
+      req.user,
+      month ? parseInt(month) : undefined,
+      year ? parseInt(year) : undefined,
+      range,
+      date
     );
   }
 

@@ -115,6 +115,7 @@ model section {
   teachersubjectsection teachersubjectsection[]
   classIncharge         teachers?               @relation("ClassIncharge", fields: [classInchargeId], references: [id])
   examSchedules         ExamSchedule[]
+  schoolEvents          SchoolEvent[]
   deletedAt             DateTime?
 }
 
@@ -569,8 +570,10 @@ model SchoolEvent {
   endDate     DateTime? @db.Date
   type        EventType @default(EVENT)
   School_id   String
+  section_id  String?
   deletedAt   DateTime?
   School      School    @relation(fields: [School_id], references: [id])
+  section     section?  @relation(fields: [section_id], references: [id])
 }
 
 enum EventType {

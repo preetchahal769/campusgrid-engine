@@ -39,4 +39,8 @@ export class CreateEventDto {
 
   @IsString()
   School_id: string;
+
+  @IsString()
+  @IsOptional()
+  section_id?: string;
 }

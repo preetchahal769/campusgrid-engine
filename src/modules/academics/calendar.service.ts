@@ -45,6 +45,14 @@ export class CalendarService {
 
     return this.prisma.schoolEvent.findMany({
       where,
+      include: {
+        section: {
+          select: {
+            name: true,
+            grade: { select: { name: true } }
+          }
+        }
+      },
       orderBy: { startDate: 'asc' }
     });
   }
