@@ -97,8 +97,8 @@ export class BugReportsService {
     }
 
     if (newStatus === 'REOPENED') {
-      if (report.userEmail !== userEmail) {
-        throw new ForbiddenException('Only the reporter can reopen this bug report');
+      if (report.userEmail !== userEmail && userRole !== 'SUPER_ADMIN') {
+        throw new ForbiddenException('Only the reporter or a super admin can reopen this bug report');
       }
 
       return this.prisma.bugReport.update({
