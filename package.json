@@ -23,7 +23,8 @@
     "prisma:migrate:up": "prisma migrate deploy",
     "prisma:migrate:down": "prisma migrate reset",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "ts-node prisma/seed.ts"
+    "prisma:seed": "ts-node prisma/seed.ts",
+    "prepare": "husky"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -67,6 +68,8 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.3.0",
+    "@commitlint/config-conventional": "^19.2.2",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",
     "@faker-js/faker": "^10.4.0",
@@ -86,6 +89,7 @@
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^16.0.0",
+    "husky": "^9.0.11",
     "jest": "^30.0.0",
     "prettier": "^3.4.2",
     "prisma": "^7.7.0",
