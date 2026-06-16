@@ -26,6 +26,10 @@ export class UsersService {
       UserRole.STAFF,
       UserRole.STUDENT,
       UserRole.PARENT,
+      UserRole.BURSAR,
+      UserRole.LIBRARIAN,
+      UserRole.ACADEMIC_COORDINATOR,
+      UserRole.TRANSPORT_MANAGER,
     ],
     [UserRole.ADMIN]: [
       UserRole.MANAGEMENT,
@@ -34,6 +38,10 @@ export class UsersService {
       UserRole.STAFF,
       UserRole.STUDENT,
       UserRole.PARENT,
+      UserRole.BURSAR,
+      UserRole.LIBRARIAN,
+      UserRole.ACADEMIC_COORDINATOR,
+      UserRole.TRANSPORT_MANAGER,
     ],
     [UserRole.MANAGEMENT]: [
       UserRole.PRINCIPAL,
@@ -41,12 +49,20 @@ export class UsersService {
       UserRole.STAFF,
       UserRole.STUDENT,
       UserRole.PARENT,
+      UserRole.BURSAR,
+      UserRole.LIBRARIAN,
+      UserRole.ACADEMIC_COORDINATOR,
+      UserRole.TRANSPORT_MANAGER,
     ],
     [UserRole.PRINCIPAL]: [
       UserRole.TEACHER,
       UserRole.STAFF,
       UserRole.STUDENT,
       UserRole.PARENT,
+      UserRole.BURSAR,
+      UserRole.LIBRARIAN,
+      UserRole.ACADEMIC_COORDINATOR,
+      UserRole.TRANSPORT_MANAGER,
     ],
     [UserRole.TEACHER]: [
       UserRole.STUDENT,
@@ -55,6 +71,10 @@ export class UsersService {
     [UserRole.STAFF]: [],
     [UserRole.STUDENT]: [],
     [UserRole.PARENT]: [],
+    [UserRole.BURSAR]: [],
+    [UserRole.LIBRARIAN]: [],
+    [UserRole.ACADEMIC_COORDINATOR]: [],
+    [UserRole.TRANSPORT_MANAGER]: [],
   };
 
   async create(createUserDto: CreateUserDto, currentUser: AuthenticatedUser) {
