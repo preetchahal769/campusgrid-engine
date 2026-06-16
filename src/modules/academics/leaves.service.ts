@@ -3,6 +3,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { CreateLeaveRequestDto, UpdateLeaveStatusDto } from './dto/leave-request.dto';
 import { UserRole, LeaveStatus, AttendanceStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class LeavesService {
@@ -69,23 +70,81 @@ export class LeavesService {
       throw new ForbiddenException(message);
     }
 
+    // Validate partial date authorization
+    if ((updateDto.approvedStartDate || updateDto.approvedEndDate) && 
+        currentUser.role !== UserRole.PRINCIPAL && 
+        currentUser.role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('Only the Principal is authorized to grant partial leaves.');
+    }
+
+    let approvedStart = leave.startDate;
+    let approvedEnd = leave.endDate;
+
+    if (updateDto.status === LeaveStatus.APPROVED) {
+      if (updateDto.approvedStartDate) {
+        approvedStart = new Date(updateDto.approvedStartDate);
+      }
+      if (updateDto.approvedEndDate) {
+        approvedEnd = new Date(updateDto.approvedEndDate);
+      }
+
+      // Ensure partial dates fall within requested bounds
+      if (approvedStart < leave.startDate || approvedEnd > leave.endDate || approvedEnd < approvedStart) {
+        throw new BadRequestException('Approved dates must fall within the requested leave range.');
+      }
+    }
+
     const updatedLeave = await this.prisma.leaveRequest.update({
       where: { id },
       data: {
         status: updateDto.status,
-        approvedById: currentUser.id
+        approvedById: currentUser.id,
+        approvedStartDate: updateDto.status === LeaveStatus.APPROVED ? approvedStart : null,
+        approvedEndDate: updateDto.status === LeaveStatus.APPROVED ? approvedEnd : null,
       }
     });
 
-    // AUTO ATTENDANCE LOGIC: If approved, mark dates as LEAVE
+    // AUTO ATTENDANCE LOGIC
     if (updateDto.status === LeaveStatus.APPROVED) {
-      await this.markAttendanceForLeave(leave);
+      await this.markAttendanceForApprovedLeave(leave, approvedStart, approvedEnd);
+    } else if (updateDto.status === LeaveStatus.REJECTED) {
+      await this.markAttendanceForRejectedLeave(leave);
     }
 
     return updatedLeave;
   }
 
-  private async markAttendanceForLeave(leave: any) {
+  private async markAttendanceForApprovedLeave(leave: any, approvedStart: Date, approvedEnd: Date) {
+    const start = new Date(leave.startDate);
+    const end = new Date(leave.endDate);
+    const userId = leave.student.users_id;
+    const schoolId = leave.School_id;
+
+    const currentDate = new Date(start);
+    while (currentDate <= end) {
+      const isApproved = currentDate >= approvedStart && currentDate <= approvedEnd;
+      const targetStatus = isApproved ? AttendanceStatus.LEAVE : AttendanceStatus.ABSENT;
+
+      await this.prisma.attendance.upsert({
+        where: {
+          users_id_date: {
+            users_id: userId,
+            date: new Date(currentDate)
+          }
+        },
+        update: { status: targetStatus },
+        create: {
+          date: new Date(currentDate),
+          status: targetStatus,
+          users_id: userId,
+          School_id: schoolId
+        }
+      });
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+  }
+
+  private async markAttendanceForRejectedLeave(leave: any) {
     const start = new Date(leave.startDate);
     const end = new Date(leave.endDate);
     const userId = leave.student.users_id;
@@ -100,10 +159,10 @@ export class LeavesService {
             date: new Date(currentDate)
           }
         },
-        update: { status: AttendanceStatus.LEAVE },
+        update: { status: AttendanceStatus.ABSENT },
         create: {
           date: new Date(currentDate),
-          status: AttendanceStatus.LEAVE,
+          status: AttendanceStatus.ABSENT,
           users_id: userId,
           School_id: schoolId
         }
@@ -160,5 +219,33 @@ export class LeavesService {
       where: { id },
       data: { status: LeaveStatus.ESCALATED }
     });
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async handleExpiredLeaves() {
+    console.log('Running cron task: Auto-rejecting expired leave requests...');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const expiredLeaves = await this.prisma.leaveRequest.findMany({
+      where: {
+        status: { in: [LeaveStatus.PENDING, LeaveStatus.ESCALATED] },
+        endDate: { lt: today }
+      },
+      include: {
+        student: true
+      }
+    });
+
+    console.log(`Found ${expiredLeaves.length} expired leave requests.`);
+
+    for (const leave of expiredLeaves) {
+      await this.prisma.leaveRequest.update({
+        where: { id: leave.id },
+        data: { status: LeaveStatus.REJECTED }
+      });
+      await this.markAttendanceForRejectedLeave(leave);
+      console.log(`Auto-rejected expired leave ID: ${leave.id}`);
+    }
   }
 }

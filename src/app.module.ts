@@ -33,10 +33,12 @@ import { SentryModule, SentryGlobalFilter } from '@sentry/nestjs/setup';
     SentryModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
-    ThrottlerModule.forRoot([{
-      ttl: 60000,   // 1 minute window
-      limit: 300,   // 300 requests per minute (was 10 - too strict for a dashboard)
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 1 minute window
+        limit: 300, // 300 requests per minute (was 10 - too strict for a dashboard)
+      },
+    ]),
     AuthModule,
     PrismaModule,
     BullModule.forRootAsync({

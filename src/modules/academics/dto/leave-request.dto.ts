@@ -23,4 +23,12 @@ export class UpdateLeaveStatusDto {
   @IsNotEmpty()
   @IsEnum(LeaveStatus)
   status: LeaveStatus;
+
+  @IsOptional()
+  @IsDateString()
+  approvedStartDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  approvedEndDate?: string;
 }
