@@ -1,4 +1,5 @@
-import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch, UseInterceptors, UploadedFiles, Query } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch, UseInterceptors, UploadedFiles, Query, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { GradesService } from './grades.service';
 import { SectionsService } from './sections.service';
@@ -205,9 +206,17 @@ export class AcademicsController {
   fetchAvailableTeachers(
     @Query('lectureNo') lectureNo: string,
     @Query('dayOfWeek') dayOfWeek: string,
+    @Query('subjectId') subjectId: string,
+    @Query('sectionId') sectionId: string,
     @Request() req: AuthenticatedRequest
   ) {
-    return this.substitutionsService.findAvailableTeachers(parseInt(lectureNo), dayOfWeek, req.user);
+    return this.substitutionsService.findAvailableTeachers(
+      parseInt(lectureNo),
+      dayOfWeek,
+      req.user,
+      subjectId,
+      sectionId
+    );
   }
 
   @Post('substitutions/assign')
@@ -230,7 +239,7 @@ export class AcademicsController {
   }
 
   @Get('exams')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT)
   fetchExams(@Query('schoolId') schoolId: string) {
     return this.examsService.findAllExams(schoolId);
   }
@@ -239,6 +248,12 @@ export class AcademicsController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL)
   scheduleExam(@Body() dto: CreateExamScheduleDto) {
     return this.examsService.scheduleExam(dto);
+  }
+
+  @Get('exams/my-schedules')
+  @Roles(UserRole.TEACHER)
+  fetchMySchedules(@Request() req: AuthenticatedRequest) {
+    return this.examsService.findTeacherSchedules(req.user);
   }
 
   @Get('exams/:id/schedules')
@@ -252,10 +267,32 @@ export class AcademicsController {
     return this.examsService.submitResults(dto);
   }
 
+  @Get('exams/schedules/:scheduleId/results')
+  @Roles(UserRole.TEACHER, UserRole.PRINCIPAL)
+  fetchScheduleResults(@Param('scheduleId') scheduleId: string) {
+    return this.examsService.getScheduleResults(scheduleId);
+  }
+
   @Get('exams/:examId/report-card/:studentId')
   @Roles(UserRole.STUDENT, UserRole.PARENT, UserRole.TEACHER, UserRole.PRINCIPAL)
   getReportCard(@Param('examId') examId: string, @Param('studentId') studentId: string) {
     return this.examsService.getStudentReport(studentId, examId);
+  }
+
+  @Get('exams/:examId/report-card/:studentId/pdf')
+  @Roles(UserRole.STUDENT, UserRole.PARENT, UserRole.TEACHER, UserRole.PRINCIPAL)
+  async getReportCardPdf(
+    @Param('examId') examId: string,
+    @Param('studentId') studentId: string,
+    @Res() res: Response
+  ) {
+    const buffer = await this.examsService.generateReportCardPdf(studentId, examId);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=report_card_${studentId}.pdf`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
   }
 
   // --- Calendar: Terms & Events ---

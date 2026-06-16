@@ -47,4 +47,10 @@ export class StudentsController {
   ) {
     return this.studentsService.updateProfile(id, updateDto, req.user);
   }
+
+  @Get('section/:sectionId')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  findBySection(@Param('sectionId') sectionId: string, @Request() req: AuthenticatedRequest) {
+    return this.studentsService.findBySection(sectionId, req.user);
+  }
 }

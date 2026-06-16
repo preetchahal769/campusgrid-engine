@@ -200,4 +200,24 @@ export class StudentsService {
       data: { section_id },
     });
   }
+
+  async findBySection(sectionId: string, currentUser: AuthenticatedUser) {
+    const section = await this.prisma.section.findUnique({
+      where: { id: sectionId },
+      include: { grade: true }
+    });
+    if (!section) throw new NotFoundException('Section not found.');
+
+    if (currentUser.role !== UserRole.SUPER_ADMIN && section.grade.School_id !== currentUser.School_id) {
+      throw new ForbiddenException('This section belongs to a different school.');
+    }
+
+    return this.prisma.students.findMany({
+      where: { section_id: sectionId, status: 'ACTIVE' },
+      include: {
+        users: { select: { name: true } }
+      },
+      orderBy: { rollNumber: 'asc' }
+    });
+  }
 }
