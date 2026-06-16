@@ -298,6 +298,25 @@ export class UsersService {
           select: {
             name: true,
           }
+        },
+        parent: {
+          include: {
+            students: {
+              include: {
+                users: {
+                  select: {
+                    name: true,
+                    photoUrl: true,
+                  }
+                },
+                section: {
+                  include: {
+                    grade: true
+                  }
+                }
+              }
+            }
+          }
         }
       },
     });

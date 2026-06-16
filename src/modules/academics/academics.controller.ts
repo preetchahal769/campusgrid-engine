@@ -150,13 +150,13 @@ export class AcademicsController {
   }
 
   @Post('leaves')
-  @Roles(UserRole.STUDENT)
+  @Roles(UserRole.STUDENT, UserRole.PARENT)
   createLeave(@Body() createLeaveDto: CreateLeaveRequestDto, @Request() req: AuthenticatedRequest) {
     return this.leavesService.create(createLeaveDto, req.user);
   }
 
   @Get('leaves')
-  @Roles(UserRole.STUDENT, UserRole.TEACHER, UserRole.PRINCIPAL, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.STUDENT, UserRole.PARENT, UserRole.TEACHER, UserRole.PRINCIPAL, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   fetchLeaves(@Request() req: AuthenticatedRequest) {
     return this.leavesService.findAll(req.user);
   }

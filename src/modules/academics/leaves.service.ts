@@ -11,10 +11,21 @@ export class LeavesService {
 
   async create(createDto: CreateLeaveRequestDto, currentUser: AuthenticatedUser) {
     // 1. Find student profile
-    const student = await this.prisma.students.findFirst({
-      where: { users_id: currentUser.id }
-    });
-    if (!student) throw new ForbiddenException('Only students can request leaves.');
+    let student;
+    if (currentUser.role === UserRole.PARENT) {
+      const parentRecord = await this.prisma.parent.findFirst({
+        where: { users_id: currentUser.id }
+      });
+      if (!parentRecord) throw new ForbiddenException('Parent profile not found.');
+      student = await this.prisma.students.findUnique({
+        where: { id: parentRecord.students_id }
+      });
+    } else {
+      student = await this.prisma.students.findFirst({
+        where: { users_id: currentUser.id }
+      });
+    }
+    if (!student) throw new ForbiddenException('Only students or parents can request leaves.');
 
     // 2. Validate dates
     const start = new Date(createDto.startDate);
@@ -175,6 +186,11 @@ export class LeavesService {
     if (currentUser.role === UserRole.STUDENT) {
       const student = await this.prisma.students.findFirst({ where: { users_id: currentUser.id } });
       return this.prisma.leaveRequest.findMany({ where: { studentId: student?.id } });
+    }
+
+    if (currentUser.role === UserRole.PARENT) {
+      const parentRecord = await this.prisma.parent.findFirst({ where: { users_id: currentUser.id } });
+      return this.prisma.leaveRequest.findMany({ where: { studentId: parentRecord?.students_id } });
     }
 
     if (currentUser.role === UserRole.TEACHER) {
