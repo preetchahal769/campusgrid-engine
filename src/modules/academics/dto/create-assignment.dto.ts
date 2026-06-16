@@ -1,5 +1,5 @@
-import { IsString, IsOptional, IsInt, IsDateString, IsArray, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsOptional, IsInt, IsDateString, IsArray, ValidateNested, IsBoolean } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 
 class AssignmentAttachmentDto {
   @IsString()
@@ -40,4 +40,9 @@ export class CreateAssignmentDto {
   @ValidateNested({ each: true })
   @Type(() => AssignmentAttachmentDto)
   attachments?: AssignmentAttachmentDto[];
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  isDraft?: boolean;
 }

@@ -35,7 +35,7 @@ export class AssignmentsService {
       throw new ForbiddenException('Teacher profile not found for this user.');
     }
 
-    const { title, description, dueDate, maxMarks, subject_id, section_id, attachments } = createAssignmentDto;
+    const { title, description, dueDate, maxMarks, subject_id, section_id, attachments, isDraft } = createAssignmentDto;
 
     // 3. Verify Teacher is assigned to this Section and Subject
     const isAssigned = await this.prisma.teachersubjectsection.findFirst({
@@ -78,6 +78,7 @@ export class AssignmentsService {
         maxMarks,
         subject_id,
         section_id,
+        isDraft: isDraft || false,
         teachers_id: teacherProfile.id,
         attachments: dbAttachments.length > 0 ? {
           create: dbAttachments
@@ -107,7 +108,10 @@ export class AssignmentsService {
       if (!studentProfile) return [];
 
       assignments = await this.prisma.assignment.findMany({
-        where: { section_id: studentProfile.section_id },
+        where: { 
+          section_id: studentProfile.section_id,
+          isDraft: false
+        },
         select: {
           id: true,
           title: true,
@@ -151,6 +155,7 @@ export class AssignmentsService {
           description: true,
           dueDate: true,
           maxMarks: true,
+          isDraft: true,
           attachments: true,
           section: { select: { name: true } },
           subject: { select: { name: true } },
@@ -200,7 +205,7 @@ export class AssignmentsService {
       let isSubmitted = false;
 
       if (assig.submission && Array.isArray(assig.submission) && assig.submission.length > 0) {
-        const sub = assig.submission[0];
+        const sub = assig.submission[0] as any;
         isSubmitted = true;
         
         // Check for multi-file attachments (New system)
@@ -215,6 +220,14 @@ export class AssignmentsService {
         if (sub.fileUrl && !sub.fileUrl.startsWith('http')) {
           sub.fileUrl = await this.storageService.getPresignedUrl(sub.fileUrl);
         }
+
+        // Calculate dynamic letter grade and percentage
+        if (sub.obtainedMarks !== null && sub.obtainedMarks !== undefined && assig.maxMarks) {
+          const percent = Math.round((sub.obtainedMarks / assig.maxMarks) * 100);
+          sub.percentage = percent;
+          sub.letterGrade = this.calculateLetterGrade(percent);
+        }
+
         submissionInfo = sub;
       }
 
@@ -287,6 +300,10 @@ export class AssignmentsService {
       throw new ForbiddenException('This assignment is not for your class.');
     }
 
+    if (assignment.dueDate && new Date() > new Date(assignment.dueDate)) {
+      throw new ForbiddenException('Late submissions are blocked for this assignment.');
+    }
+
     // 3. Check for existing submission to prevent duplicates
     const existingSubmission = await this.prisma.submission.findFirst({
       where: {
@@ -299,10 +316,64 @@ export class AssignmentsService {
       throw new ForbiddenException('You have already submitted this assignment.');
     }
 
-    // 4. Handle file uploads
+    // 4. Handle file uploads and image-to-PDF compilation
     const dbAttachments: any[] = [];
+    const processedFiles: { originalname: string; buffer: Buffer; mimetype: string }[] = [];
+
     if (files && files.length > 0) {
-      for (const file of files) {
+      const imageFiles = files.filter(f => f.mimetype.startsWith('image/'));
+      const otherFiles = files.filter(f => !f.mimetype.startsWith('image/'));
+
+      if (imageFiles.length > 0) {
+        try {
+          const { PDFDocument } = require('pdf-lib');
+          const pdfDoc = await PDFDocument.create();
+          let embeddedAny = false;
+
+          for (const imgFile of imageFiles) {
+            try {
+              let image;
+              if (imgFile.mimetype === 'image/png') {
+                image = await pdfDoc.embedPng(imgFile.buffer);
+              } else if (imgFile.mimetype === 'image/jpeg' || imgFile.mimetype === 'image/jpg') {
+                image = await pdfDoc.embedJpg(imgFile.buffer);
+              }
+
+              if (image) {
+                const page = pdfDoc.addPage([image.width, image.height]);
+                page.drawImage(image, {
+                  x: 0,
+                  y: 0,
+                  width: image.width,
+                  height: image.height,
+                });
+                embeddedAny = true;
+              }
+            } catch (err) {
+              console.error('Failed to embed image in PDF:', err);
+              processedFiles.push(imgFile);
+            }
+          }
+
+          if (embeddedAny) {
+            const pdfBytes = await pdfDoc.save();
+            processedFiles.push({
+              originalname: 'compiled_homework.pdf',
+              buffer: Buffer.from(pdfBytes),
+              mimetype: 'application/pdf',
+            });
+          } else {
+            processedFiles.push(...imageFiles);
+          }
+        } catch (pdfErr) {
+          console.error('pdf-lib compilation failed, falling back to original uploads:', pdfErr);
+          processedFiles.push(...imageFiles);
+        }
+      }
+
+      processedFiles.push(...otherFiles);
+
+      for (const file of processedFiles) {
         const key = `submissions/${assignmentId}/${studentProfile.id}-${Date.now()}-${file.originalname}`;
         await this.storageService.uploadFile(key, file.buffer, file.mimetype);
         dbAttachments.push({
@@ -402,7 +473,8 @@ export class AssignmentsService {
             users: { select: { name: true } }
           }
         },
-        attachments: true
+        attachments: true,
+        assignment: { select: { maxMarks: true } }
       },
       orderBy: { submittedAt: 'desc' }
     });
@@ -419,8 +491,26 @@ export class AssignmentsService {
       if (sub.fileUrl && !sub.fileUrl.startsWith('http')) {
         sub.fileUrl = await this.storageService.getPresignedUrl(sub.fileUrl);
       }
+
+      // Add dynamic letter grade
+      if (sub.obtainedMarks !== null && sub.obtainedMarks !== undefined && sub.assignment?.maxMarks) {
+        const percent = Math.round((sub.obtainedMarks / sub.assignment.maxMarks) * 100);
+        sub.percentage = percent;
+        sub.letterGrade = this.calculateLetterGrade(percent);
+      }
     }
 
     return submissions;
+  }
+
+  private calculateLetterGrade(percentage: number): string {
+    if (percentage >= 95) return 'A++';
+    if (percentage >= 90) return 'A+';
+    if (percentage >= 80) return 'A';
+    if (percentage >= 70) return 'B';
+    if (percentage >= 60) return 'C';
+    if (percentage >= 50) return 'D';
+    if (percentage >= 33) return 'E';
+    return 'F';
   }
 }

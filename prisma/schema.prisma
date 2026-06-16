@@ -21,6 +21,7 @@ model Assignment {
   teachers    teachers     @relation(fields: [teachers_id], references: [id])
   attachments attachment[]
   submission  submission[]
+  isDraft     Boolean      @default(false)
   deletedAt   DateTime?
 
   @@map("assigment")
@@ -655,6 +656,8 @@ model leaveRequest {
   approvedById  String?
   School_id     String
   createdAt     DateTime    @default(now())
+  approvedStartDate DateTime?   @db.Date
+  approvedEndDate   DateTime?   @db.Date
 
   student    students  @relation(fields: [studentId], references: [id])
   approvedBy users?    @relation("ApprovedLeaves", fields: [approvedById], references: [id])
