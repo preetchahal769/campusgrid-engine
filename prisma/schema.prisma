@@ -103,6 +103,8 @@ model School {
   schoolEvents          SchoolEvent[]
   escalations           Escalation[]
   profileChangeRequests ProfileChangeRequest[]
+  books                 Book[]
+  libraryTransactions   LibraryTransaction[]
 }
 
 model section {
@@ -628,6 +630,7 @@ model users {
   reviewedChangeRequests     ProfileChangeRequest[]    @relation("ReviewedChangeRequests")
   lastActiveAt               DateTime?
   AcknowledgedEscalations    Escalation[]              @relation("AcknowledgedEscalations")
+  libraryTransactions        LibraryTransaction[]
 }
 
 model attendance {
@@ -747,4 +750,47 @@ model BugReport {
   status        String    @default("OPEN")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime? @updatedAt
+}
+
+model Book {
+  id              String             @id @default(cuid())
+  title           String
+  author          String
+  isbn            String?
+  category        String?
+  totalCopies     Int                @default(1)
+  availableCopies Int                @default(1)
+  School_id       String
+  School          School             @relation(fields: [School_id], references: [id])
+  transactions    LibraryTransaction[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  deletedAt       DateTime?
+
+  @@index([School_id])
+}
+
+model LibraryTransaction {
+  id         String            @id @default(cuid())
+  bookId     String
+  borrowerId String
+  borrowedAt DateTime          @default(now())
+  dueDate    DateTime
+  returnedAt DateTime?
+  status     TransactionStatus @default(BORROWED)
+  School_id  String
+  
+  book     Book   @relation(fields: [bookId], references: [id])
+  borrower users  @relation(fields: [borrowerId], references: [id])
+  School   School @relation(fields: [School_id], references: [id])
+
+  @@index([bookId])
+  @@index([borrowerId])
+  @@index([School_id])
+}
+
+enum TransactionStatus {
+  BORROWED
+  RETURNED
+  OVERDUE
 }
