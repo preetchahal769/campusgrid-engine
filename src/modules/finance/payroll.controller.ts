@@ -20,19 +20,19 @@ export class PayrollController {
   ) {}
 
   @Post('structure')
-  @Roles(UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.SUPER_ADMIN, UserRole.BURSAR)
   setStructure(@Body() dto: SetSalaryStructureDto, @Request() req: AuthenticatedRequest) {
     return this.payrollService.setSalaryStructure(dto, req.user);
   }
 
   @Post('generate')
-  @Roles(UserRole.ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.BURSAR)
   generatePayroll(@Body() dto: GeneratePayrollDto, @Request() req: AuthenticatedRequest) {
     return this.payrollService.generateMonthlyPayroll(dto, req.user);
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.BURSAR)
   findAll(@Query('month') month: string, @Request() req: AuthenticatedRequest) {
     if (!req.user.School_id) {
       throw new ForbiddenException('User must belong to a school.');
@@ -41,7 +41,7 @@ export class PayrollController {
   }
 
   @Patch(':id/pay')
-  @Roles(UserRole.ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.BURSAR)
   markPaid(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.payrollService.markAsPaid(id, req.user);
   }

@@ -20,25 +20,25 @@ export class FeesController {
   ) {}
 
   @Post('structure')
-  @Roles(UserRole.ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.BURSAR)
   setStructure(@Body() dto: CreateFeeStructureDto, @Request() req: AuthenticatedRequest) {
     return this.feesService.setFeeStructure(dto, req.user);
   }
 
   @Post('generate-bills')
-  @Roles(UserRole.ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.BURSAR)
   generateBills(@Body() dto: GenerateFeeBillsDto, @Request() req: AuthenticatedRequest) {
     return this.feesService.generateBills(dto, req.user);
   }
 
   @Patch('bills/:id/pay')
-  @Roles(UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.STAFF)
+  @Roles(UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.STAFF, UserRole.BURSAR)
   markPaid(@Param('id') id: string, @Body() body: { amount: number }, @Request() req: AuthenticatedRequest) {
     return this.feesService.markAsPaid(id, body.amount, req.user);
   }
 
   @Get('student/:studentId')
-  @Roles(UserRole.STUDENT, UserRole.PARENT, UserRole.TEACHER, UserRole.ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.STUDENT, UserRole.PARENT, UserRole.TEACHER, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.BURSAR)
   getStudentBills(@Param('studentId') studentId: string) {
     return this.feesService.getStudentBills(studentId);
   }
