@@ -28,6 +28,7 @@ import { BugReportsModule } from './modules/bug-reports/bug-reports.module';
 import { ApprovalsModule } from './modules/approvals/approvals.module';
 import { SentryModule, SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { LibraryModule } from './modules/library/library.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { LibraryModule } from './modules/library/library.module';
     BugReportsModule,
     ApprovalsModule,
     LibraryModule,
+    OnboardingModule,
   ],
   controllers: [AppController],
   providers: [

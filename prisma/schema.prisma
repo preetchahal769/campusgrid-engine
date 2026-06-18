@@ -104,7 +104,10 @@ model School {
   escalations           Escalation[]
   profileChangeRequests ProfileChangeRequest[]
   books                 Book[]
+  approvals             ApprovalTask[]
   libraryTransactions   LibraryTransaction[]
+  stagedOnboardingBatches StagedOnboardingBatch[]
+  notificationDispatchLogs NotificationDispatchLog[]
 }
 
 model section {
@@ -630,6 +633,9 @@ model users {
   reviewedChangeRequests     ProfileChangeRequest[]    @relation("ReviewedChangeRequests")
   lastActiveAt               DateTime?
   AcknowledgedEscalations    Escalation[]              @relation("AcknowledgedEscalations")
+  createdApprovals           ApprovalTask[]            @relation("CreatedApprovals")
+  approvedApprovals           ApprovalTask[]            @relation("ApprovedApprovals")
+  stagedOnboardingBatches    StagedOnboardingBatch[]
   libraryTransactions        LibraryTransaction[]
 }
 
@@ -793,4 +799,83 @@ enum TransactionStatus {
   BORROWED
   RETURNED
   OVERDUE
+}
+
+model ApprovalTask {
+  id          String         @id @default(cuid())
+  module      String         
+  action      String         
+  status      ApprovalStatus @default(PENDING)
+  payload     Json           
+  createdBy   String         
+  approvedBy  String?        
+  schoolId    String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  creator     users          @relation("CreatedApprovals", fields: [createdBy], references: [id])
+  approver    users?         @relation("ApprovedApprovals", fields: [approvedBy], references: [id])
+  school      School         @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model StagedOnboardingBatch {
+  id          String                  @id @default(cuid())
+  fileName    String
+  recordCount Int
+  status      ApprovalStatus          @default(PENDING)
+  schoolId    String
+  createdBy   String
+  createdAt   DateTime                @default(now())
+  
+  school      School                  @relation(fields: [schoolId], references: [id])
+  creator     users                   @relation(fields: [createdBy], references: [id])
+  records     StagedOnboardingRecord[]
+
+  @@index([schoolId])
+  @@index([createdBy])
+}
+
+model StagedOnboardingRecord {
+  id          String                @id @default(cuid())
+  batchId     String
+  studentName String
+  parentPhone String
+  className   String
+  rollNo      Int?
+  metadata    Json?
+  
+  batch       StagedOnboardingBatch @relation(fields: [batchId], references: [id])
+
+  @@index([batchId])
+}
+
+model NotificationDispatchLog {
+  id             String           @id @default(cuid())
+  recipientPhone String
+  studentName    String
+  username       String
+  status         DeliveryStatus   @default(QUEUED)
+  attempts       Int              @default(0)
+  errorMessage   String?
+  schoolId       String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  school         School           @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+}
+
+enum DeliveryStatus {
+  QUEUED
+  SENT
+  FAILED
 }
