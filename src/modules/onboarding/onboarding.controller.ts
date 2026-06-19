@@ -13,13 +13,13 @@ export class OnboardingController {
   constructor(private readonly onboardingService: OnboardingService) {}
 
   @Post('batch')
-  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.BURSAR)
+  @Roles(UserRole.ADMIN, UserRole.CLERK, UserRole.BURSAR)
   create(@Body() dto: CreateStagedOnboardingBatchDto, @Request() req: AuthenticatedRequest) {
     return this.onboardingService.createStagedBatch(dto, req.user);
   }
 
   @Get('batches')
-  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.BURSAR, UserRole.PRINCIPAL)
+  @Roles(UserRole.ADMIN, UserRole.CLERK, UserRole.BURSAR, UserRole.PRINCIPAL)
   findAll(@Request() req: AuthenticatedRequest) {
     const schoolId = req.user.School_id;
     if (!schoolId) {
@@ -29,7 +29,7 @@ export class OnboardingController {
   }
 
   @Get('batches/:id')
-  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.BURSAR, UserRole.PRINCIPAL)
+  @Roles(UserRole.ADMIN, UserRole.CLERK, UserRole.BURSAR, UserRole.PRINCIPAL)
   findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     const schoolId = req.user.School_id;
     if (!schoolId) {
@@ -39,7 +39,7 @@ export class OnboardingController {
   }
 
   @Get('dispatches')
-  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.BURSAR, UserRole.PRINCIPAL)
+  @Roles(UserRole.ADMIN, UserRole.CLERK, UserRole.BURSAR, UserRole.PRINCIPAL)
   findDispatches(@Request() req: AuthenticatedRequest) {
     const schoolId = req.user.School_id;
     if (!schoolId) {

@@ -12,16 +12,17 @@ export class TransactionsService {
       throw new ForbiddenException('User must belong to a school.');
     }
 
-    // 1. Find borrower by email
-    const borrower = await this.prisma.users.findFirst({
+    // 1. Find borrower student profile by email
+    const student = await this.prisma.students.findFirst({
       where: {
-        email: dto.borrowerEmail,
+        users: { email: dto.borrowerEmail },
         School_id: user.School_id,
       },
+      include: { users: true }
     });
 
-    if (!borrower) {
-      throw new NotFoundException('Borrower not found with that email.');
+    if (!student) {
+      throw new NotFoundException('Student borrower not found with that email.');
     }
 
     // 2. Find book and check availability
@@ -42,14 +43,18 @@ export class TransactionsService {
       this.prisma.libraryTransaction.create({
         data: {
           bookId: dto.bookId,
-          borrowerId: borrower.id,
+          studentId: student.id,
           dueDate: new Date(dto.dueDate),
           School_id: user.School_id,
           status: TransactionStatus.BORROWED,
         },
         include: {
           book: true,
-          borrower: { select: { name: true, email: true } },
+          student: {
+            include: {
+              users: { select: { name: true, email: true } }
+            }
+          },
         },
       }),
       this.prisma.book.update({
@@ -88,7 +93,11 @@ export class TransactionsService {
         },
         include: {
           book: true,
-          borrower: { select: { name: true, email: true } },
+          student: {
+            include: {
+              users: { select: { name: true, email: true } }
+            }
+          },
         },
       }),
       this.prisma.book.update({
@@ -105,7 +114,11 @@ export class TransactionsService {
       where: { School_id: schoolId },
       include: {
         book: true,
-        borrower: { select: { name: true, email: true, role: true } },
+        student: {
+          include: {
+            users: { select: { name: true, email: true, role: true } }
+          }
+        },
       },
       orderBy: { borrowedAt: 'desc' },
     });

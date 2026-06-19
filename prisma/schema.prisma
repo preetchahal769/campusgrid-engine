@@ -63,15 +63,17 @@ model grade {
 }
 
 model principal {
-  id              String    @id @default(cuid())
-  qualification   String?   @db.VarChar
-  experienceYears Int?      @map("experinceYear")
-  joiningDate     DateTime? @db.Date
-  signatureUrl    String?   @db.VarChar
-  School_id       String
-  users_id        String
-  users           users     @relation(fields: [users_id], references: [id])
-  deletedAt       DateTime?
+  id                     String                 @id @default(cuid())
+  qualification          String?                @db.VarChar
+  experienceYears        Int?                   @map("experinceYear")
+  joiningDate            DateTime?              @db.Date
+  signatureUrl           String?                @db.VarChar
+  School_id              String
+  users_id               String
+  users                  users                  @relation(fields: [users_id], references: [id])
+  deletedAt              DateTime?
+  approvedApprovals      ApprovalTask[]
+  reviewedChangeRequests ProfileChangeRequest[]
 }
 
 model School {
@@ -125,14 +127,58 @@ model section {
   deletedAt             DateTime?
 }
 
-model staff {
+model clerks {
+  id                      String                  @id @default(cuid())
+  department              String?                 @db.VarChar
+  joiningDate             DateTime?               @db.Date
+  experience              String?                 @map("Experince")
+  users_id                String
+  School_id               String
+  users                   users                   @relation(fields: [users_id], references: [id])
+  deletedAt               DateTime?
+  createdApprovals        ApprovalTask[]
+  stagedOnboardingBatches StagedOnboardingBatch[]
+}
+
+model bursars {
   id            String    @id @default(cuid())
   department    String?   @db.VarChar
   joiningDate   DateTime? @db.Date
   experience    String?   @map("Experince")
-  monthlySalary Int?      @map("monthly salary")
-  licenseNumber Int?
-  assignedArea  String?   @db.VarChar
+  users_id      String
+  School_id     String
+  users         users     @relation(fields: [users_id], references: [id])
+  deletedAt     DateTime?
+}
+
+model librarians {
+  id            String    @id @default(cuid())
+  department    String?   @db.VarChar
+  joiningDate   DateTime? @db.Date
+  experience    String?   @map("Experince")
+  users_id      String
+  School_id     String
+  users         users     @relation(fields: [users_id], references: [id])
+  deletedAt     DateTime?
+}
+
+model academic_coordinators {
+  id            String    @id @default(cuid())
+  department    String?   @db.VarChar
+  joiningDate   DateTime? @db.Date
+  experience    String?   @map("Experince")
+  users_id      String
+  School_id     String
+  users         users     @relation(fields: [users_id], references: [id])
+  deletedAt     DateTime?
+}
+
+model transport_managers {
+  id            String    @id @default(cuid())
+  department    String?   @db.VarChar
+  joiningDate   DateTime? @db.Date
+  experience    String?   @map("Experince")
+  licenseNumber String?   @db.VarChar
   users_id      String
   School_id     String
   users         users     @relation(fields: [users_id], references: [id])
@@ -140,31 +186,39 @@ model staff {
 }
 
 model students {
-  id                 String           @id @default(cuid())
-  admissionNumber    String?          @db.VarChar
-  rollNumber         Int?
-  dateOfBirth        DateTime?        @db.Date
-  bloodGroup         String?          @db.VarChar
-  fatherName         String?          @db.VarChar
-  motherName         String?          @db.VarChar
-  emergencyContact   String?          @db.VarChar
-  rankingPoints      Int?
-  users_id           String
-  School_id          String
-  section_id         String
-  discountPercentage Int?             @default(0) @map("discount percentage")
-  monthlyFee         Int?             @map("monthly fee")
-  status             EnrollmentStatus @default(ACTIVE)
-  enrolledAt         DateTime         @default(now())
-  transferredAt      DateTime?
-  parent             parent[]
-  section            section          @relation(fields: [section_id], references: [id])
-  users              users            @relation(fields: [users_id], references: [id])
-  submission         submission[]
-  leaveRequest       leaveRequest[]
-  examResults        ExamResult[]
-  feeBills           StudentFeeBill[]
-  deletedAt          DateTime?
+  id                  String               @id @default(cuid())
+  admissionNumber     String?              @db.VarChar
+  rollNumber          Int?
+  dateOfBirth         DateTime?            @db.Date
+  bloodGroup          String?              @db.VarChar
+  fatherName          String?              @db.VarChar
+  motherName          String?              @db.VarChar
+  emergencyContact    String?              @db.VarChar
+  rankingPoints       Int?
+  users_id            String
+  School_id           String
+  section_id          String?
+  discountPercentage  Int?                 @default(0) @map("discount percentage")
+  monthlyFee          Int?                 @map("monthly fee")
+  status              EnrollmentStatus     @default(ACTIVE)
+  enrolledAt          DateTime             @default(now())
+  transferredAt       DateTime?
+  parent              parent[]
+  section             section?             @relation(fields: [section_id], references: [id])
+  users               users                @relation(fields: [users_id], references: [id])
+  submission          submission[]
+  leaveRequest        leaveRequest[]
+  examResults         ExamResult[]
+  feeBills            StudentFeeBill[]
+  deletedAt           DateTime?
+  libraryTransactions LibraryTransaction[]
+  profileChangeRequests ProfileChangeRequest[]
+
+  // GIS & Route Allocation Fields
+  student_home_location   Json?
+  assigned_stop_location  Json?
+  stop_name               String?              @db.VarChar(100)
+  route_status            RouteStatus          @default(PENDING_PARENT)
 
   @@index([School_id])
   @@index([section_id])
@@ -246,6 +300,7 @@ model teachers {
   sentSwapRequests      StudioRoomSwapRequest[] @relation("FromTeacher")
   receivedSwapRequests  StudioRoomSwapRequest[] @relation("ToTeacher")
   deletedAt             DateTime?
+  profileChangeRequests ProfileChangeRequest[]
 }
 
 model teachersubjectsection {
@@ -458,23 +513,27 @@ model ConversationParticipant {
 
 model ProfileChangeRequest {
   id                     String        @id @default(cuid())
-  userId                 String
+  teacherId              String?       
+  studentId              String?       
   School_id              String
   requestedName          String?       @db.VarChar
   requestedPhoneNo       String?       @db.VarChar
   requestedQualification String?       @db.VarChar
   requestedSpecilization String?       @db.VarChar
   status                 RequestStatus @default(PENDING)
-  reviewedById           String?
+  principalId            String?       
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
 
-  user       users  @relation("UserChangeRequests", fields: [userId], references: [id])
-  reviewedBy users? @relation("ReviewedChangeRequests", fields: [reviewedById], references: [id])
-  School     School @relation(fields: [School_id], references: [id])
+  teacher    teachers?  @relation(fields: [teacherId], references: [id])
+  student    students?  @relation(fields: [studentId], references: [id])
+  reviewedBy principal? @relation(fields: [principalId], references: [id])
+  School     School     @relation(fields: [School_id], references: [id])
 
   @@index([School_id])
-  @@index([userId])
+  @@index([teacherId])
+  @@index([studentId])
+  @@index([principalId])
 }
 
 model Message {
@@ -616,7 +675,11 @@ model users {
   broadcast                  broadcast[]
   parent                     parent[]
   principal                  principal[]
-  staff                      staff[]
+  clerks                     clerks[]
+  bursars                    bursars[]
+  librarians                 librarians[]
+  academic_coordinators      academic_coordinators[]
+  transport_managers         transport_managers[]
   students                   students[]
   teachers                   teachers[]
   auditLogs                  AuditLog[]
@@ -629,14 +692,8 @@ model users {
   payrolls                   Payroll[]
   participatingConversations ConversationParticipant[]
   sentMessages               Message[]
-  profileChangeRequests      ProfileChangeRequest[]    @relation("UserChangeRequests")
-  reviewedChangeRequests     ProfileChangeRequest[]    @relation("ReviewedChangeRequests")
   lastActiveAt               DateTime?
   AcknowledgedEscalations    Escalation[]              @relation("AcknowledgedEscalations")
-  createdApprovals           ApprovalTask[]            @relation("CreatedApprovals")
-  approvedApprovals           ApprovalTask[]            @relation("ApprovedApprovals")
-  stagedOnboardingBatches    StagedOnboardingBatch[]
-  libraryTransactions        LibraryTransaction[]
 }
 
 model attendance {
@@ -724,12 +781,12 @@ enum UserRole {
   PRINCIPAL
   TEACHER
   STUDENT
-  STAFF
   PARENT
   BURSAR
   LIBRARIAN
   ACADEMIC_COORDINATOR
   TRANSPORT_MANAGER
+  CLERK
 }
 
 enum EnrollmentStatus {
@@ -779,19 +836,19 @@ model Book {
 model LibraryTransaction {
   id         String            @id @default(cuid())
   bookId     String
-  borrowerId String
+  studentId  String            
   borrowedAt DateTime          @default(now())
   dueDate    DateTime
   returnedAt DateTime?
   status     TransactionStatus @default(BORROWED)
   School_id  String
   
-  book     Book   @relation(fields: [bookId], references: [id])
-  borrower users  @relation(fields: [borrowerId], references: [id])
-  School   School @relation(fields: [School_id], references: [id])
+  book    Book     @relation(fields: [bookId], references: [id])
+  student students @relation(fields: [studentId], references: [id]) 
+  School  School   @relation(fields: [School_id], references: [id])
 
   @@index([bookId])
-  @@index([borrowerId])
+  @@index([studentId])
   @@index([School_id])
 }
 
@@ -807,17 +864,19 @@ model ApprovalTask {
   action      String         
   status      ApprovalStatus @default(PENDING)
   payload     Json           
-  createdBy   String         
-  approvedBy  String?        
+  clerkId     String         
+  principalId String?        
   schoolId    String
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
-  creator     users          @relation("CreatedApprovals", fields: [createdBy], references: [id])
-  approver    users?         @relation("ApprovedApprovals", fields: [approvedBy], references: [id])
-  school      School         @relation(fields: [schoolId], references: [id])
+  clerk     clerks     @relation(fields: [clerkId], references: [id])
+  principal principal? @relation(fields: [principalId], references: [id])
+  school    School     @relation(fields: [schoolId], references: [id])
 
   @@index([schoolId])
+  @@index([clerkId])
+  @@index([principalId])
 }
 
 enum ApprovalStatus {
@@ -832,15 +891,15 @@ model StagedOnboardingBatch {
   recordCount Int
   status      ApprovalStatus          @default(PENDING)
   schoolId    String
-  createdBy   String
+  clerkId     String
   createdAt   DateTime                @default(now())
   
   school      School                  @relation(fields: [schoolId], references: [id])
-  creator     users                   @relation(fields: [createdBy], references: [id])
+  creator     clerks                  @relation(fields: [clerkId], references: [id])
   records     StagedOnboardingRecord[]
 
   @@index([schoolId])
-  @@index([createdBy])
+  @@index([clerkId])
 }
 
 model StagedOnboardingRecord {
@@ -878,4 +937,10 @@ enum DeliveryStatus {
   QUEUED
   SENT
   FAILED
+}
+
+enum RouteStatus {
+  PENDING_PARENT
+  PENDING_DRIVER
+  ROUTE_LOCKED
 }

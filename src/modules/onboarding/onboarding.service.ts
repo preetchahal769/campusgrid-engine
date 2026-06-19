@@ -11,6 +11,13 @@ export class OnboardingService {
       throw new ForbiddenException('User must belong to a school.');
     }
 
+    const clerkProfile = await this.prisma.clerks.findFirst({
+      where: { users_id: user.id }
+    });
+    if (!clerkProfile) {
+      throw new ForbiddenException('User must have a clerk profile to execute onboarding.');
+    }
+
     return this.prisma.$transaction(async (tx) => {
       // 1. Create StagedOnboardingBatch
       const batch = await tx.stagedOnboardingBatch.create({
@@ -18,7 +25,7 @@ export class OnboardingService {
           fileName: dto.fileName,
           recordCount: dto.records.length,
           schoolId: user.School_id,
-          createdBy: user.id,
+          clerkId: clerkProfile.id,
         },
       });
 
@@ -40,7 +47,7 @@ export class OnboardingService {
           action: 'BATCH_PROVISION',
           payload: { batchId: batch.id },
           schoolId: user.School_id,
-          createdBy: user.id,
+          clerkId: clerkProfile.id,
         },
       });
 
@@ -52,7 +59,11 @@ export class OnboardingService {
     return this.prisma.stagedOnboardingBatch.findMany({
       where: { schoolId },
       include: {
-        creator: { select: { name: true, email: true } },
+        creator: {
+          include: {
+            users: { select: { name: true, email: true } }
+          }
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -63,7 +74,11 @@ export class OnboardingService {
       where: { id, schoolId },
       include: {
         records: true,
-        creator: { select: { name: true, email: true } },
+        creator: {
+          include: {
+            users: { select: { name: true, email: true } }
+          }
+        },
       },
     });
 

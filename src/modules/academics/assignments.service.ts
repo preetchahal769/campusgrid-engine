@@ -105,7 +105,7 @@ export class AssignmentsService {
         where: { users_id: currentUser.id, status: 'ACTIVE' }
       });
 
-      if (!studentProfile) return [];
+      if (!studentProfile || !studentProfile.section_id) return [];
 
       assignments = await this.prisma.assignment.findMany({
         where: { 

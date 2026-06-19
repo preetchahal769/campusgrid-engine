@@ -193,7 +193,8 @@ export class ExamsService {
     page.drawText('SIKSHATANTAR ACADEMIC TRANSCRIPT', { x: 120, y: 740, size: 20, font: fontBold, color: rgb(0.04, 0.31, 0.65) });
     page.drawText(`Exam: ${exam.title} (${exam.term})`, { x: 50, y: 700, size: 12, font });
     page.drawText(`Student: ${student.users.name}`, { x: 50, y: 680, size: 12, font: fontBold });
-    page.drawText(`Class: ${student.section.grade.name} - ${student.section.name}`, { x: 50, y: 660, size: 12, font });
+    const className = student.section ? `${student.section.grade.name} - ${student.section.name}` : 'Unassigned';
+    page.drawText(`Class: ${className}`, { x: 50, y: 660, size: 12, font });
     page.drawText(`Roll No: ${student.rollNumber || 'N/A'}`, { x: 50, y: 640, size: 12, font });
 
     // Table Headers

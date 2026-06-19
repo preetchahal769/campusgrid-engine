@@ -15,13 +15,13 @@ export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
   @Post('profile')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.CLERK)
   createProfile(@Body() createStudentProfileDto: CreateStudentProfileDto, @Request() req: AuthenticatedRequest) {
     return this.studentsService.createProfile(createStudentProfileDto, req.user);
   }
 
   @Get()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.CLERK)
   findAll(@Request() req: AuthenticatedRequest) {
     return this.studentsService.findAll(req.user);
   }

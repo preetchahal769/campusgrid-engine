@@ -173,7 +173,7 @@ export class TeachersService {
         if (currentUser.School_id) {
           await this.prisma.profileChangeRequest.create({
             data: {
-              userId: currentUser.id,
+              teacherId: profile.id,
               School_id: currentUser.School_id,
               requestedQualification: qualification && !isQualificationEmpty ? qualification : undefined,
               requestedSpecilization: specilization && !isSpecilizationEmpty ? specilization : undefined,
@@ -191,7 +191,7 @@ export class TeachersService {
     if (currentUser.School_id && (qualification || specilization)) {
       await this.prisma.profileChangeRequest.create({
         data: {
-          userId: currentUser.id,
+          teacherId: profile.id,
           School_id: currentUser.School_id,
           requestedQualification: qualification !== profile.qualification ? qualification : undefined,
           requestedSpecilization: specilization !== profile.specilization ? specilization : undefined,

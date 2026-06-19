@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch, UseInterceptors, UploadedFiles, Query, Res } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch, UseInterceptors, UploadedFiles, Query, Res, Delete } from '@nestjs/common';
 import { Response } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { GradesService } from './grades.service';
@@ -41,27 +41,39 @@ export class AcademicsController {
   ) {}
 
   @Post('grades')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.CLERK)
   createGrade(@Body() createGradeDto: CreateGradeDto, @Request() req: AuthenticatedRequest) {
     return this.gradesService.create(createGradeDto, req.user);
   }
 
   @Get('grades')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.CLERK)
   fetchGrades(@Request() req: AuthenticatedRequest) {
     return this.gradesService.findAll(req.user);
   }
 
+  @Delete('grades/:id')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.CLERK)
+  deleteGrade(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.gradesService.delete(id, req.user);
+  }
+
   @Post('sections')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.CLERK)
   createSection(@Body() createSectionDto: CreateSectionDto, @Request() req: AuthenticatedRequest) {
     return this.sectionsService.create(createSectionDto, req.user);
   }
 
   @Get('sections')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.CLERK)
   fetchSections(@Request() req: AuthenticatedRequest) {
     return this.sectionsService.findAll(req.user);
+  }
+
+  @Delete('sections/:id')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.CLERK)
+  deleteSection(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.sectionsService.delete(id, req.user);
   }
 
   @Post('subjects')

@@ -23,7 +23,7 @@ export class UsersService {
       UserRole.MANAGEMENT,
       UserRole.PRINCIPAL,
       UserRole.TEACHER,
-      UserRole.STAFF,
+      UserRole.CLERK,
       UserRole.STUDENT,
       UserRole.PARENT,
       UserRole.BURSAR,
@@ -35,7 +35,7 @@ export class UsersService {
       UserRole.MANAGEMENT,
       UserRole.PRINCIPAL,
       UserRole.TEACHER,
-      UserRole.STAFF,
+      UserRole.CLERK,
       UserRole.STUDENT,
       UserRole.PARENT,
       UserRole.BURSAR,
@@ -46,7 +46,7 @@ export class UsersService {
     [UserRole.MANAGEMENT]: [
       UserRole.PRINCIPAL,
       UserRole.TEACHER,
-      UserRole.STAFF,
+      UserRole.CLERK,
       UserRole.STUDENT,
       UserRole.PARENT,
       UserRole.BURSAR,
@@ -56,7 +56,7 @@ export class UsersService {
     ],
     [UserRole.PRINCIPAL]: [
       UserRole.TEACHER,
-      UserRole.STAFF,
+      UserRole.CLERK,
       UserRole.STUDENT,
       UserRole.PARENT,
       UserRole.BURSAR,
@@ -68,7 +68,10 @@ export class UsersService {
       UserRole.STUDENT,
       UserRole.PARENT,
     ],
-    [UserRole.STAFF]: [],
+    [UserRole.CLERK]: [
+      UserRole.STUDENT,
+      UserRole.PARENT,
+    ],
     [UserRole.STUDENT]: [],
     [UserRole.PARENT]: [],
     [UserRole.BURSAR]: [],
@@ -185,9 +188,20 @@ export class UsersService {
       });
 
       if (currentUser.School_id) {
+        let studentId: string | undefined;
+        let teacherId: string | undefined;
+        if (currentUser.role === 'STUDENT') {
+          const student = await this.prisma.students.findFirst({ where: { users_id: currentUser.id } });
+          studentId = student?.id;
+        } else if (currentUser.role === 'TEACHER') {
+          const teacher = await this.prisma.teachers.findFirst({ where: { users_id: currentUser.id } });
+          teacherId = teacher?.id;
+        }
+
         await this.prisma.profileChangeRequest.create({
           data: {
-            userId: currentUser.id,
+            studentId,
+            teacherId,
             School_id: currentUser.School_id,
             requestedPhoneNo: updateDto.phoneNo,
             status: 'PENDING',
@@ -203,9 +217,20 @@ export class UsersService {
 
     // Otherwise, it's a regular update. Intercept it for approval if they have a school.
     if (currentUser.School_id && (updateDto.name || updateDto.phoneNo)) {
+      let studentId: string | undefined;
+      let teacherId: string | undefined;
+      if (currentUser.role === 'STUDENT') {
+        const student = await this.prisma.students.findFirst({ where: { users_id: currentUser.id } });
+        studentId = student?.id;
+      } else if (currentUser.role === 'TEACHER') {
+        const teacher = await this.prisma.teachers.findFirst({ where: { users_id: currentUser.id } });
+        teacherId = teacher?.id;
+      }
+
       await this.prisma.profileChangeRequest.create({
         data: {
-          userId: currentUser.id,
+          studentId,
+          teacherId,
           School_id: currentUser.School_id,
           requestedName: updateDto.name !== existingUser.name ? updateDto.name : undefined,
           requestedPhoneNo: updateDto.phoneNo !== existingUser.phoneNo ? updateDto.phoneNo : undefined,

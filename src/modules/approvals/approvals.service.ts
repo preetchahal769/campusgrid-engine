@@ -26,8 +26,15 @@ export class ApprovalsService {
     return this.prisma.profileChangeRequest.findMany({
       where: whereClause,
       include: {
-        user: {
-          select: { id: true, name: true, role: true, photoUrl: true }
+        student: {
+          include: {
+            users: { select: { id: true, name: true, role: true, photoUrl: true } }
+          }
+        },
+        teacher: {
+          include: {
+            users: { select: { id: true, name: true, role: true, photoUrl: true } }
+          }
         }
       },
       orderBy: { createdAt: 'desc' }
@@ -36,7 +43,8 @@ export class ApprovalsService {
 
   async approveRequest(id: string, currentUser: AuthenticatedUser) {
     const request = await this.prisma.profileChangeRequest.findUnique({
-      where: { id }
+      where: { id },
+      include: { student: true, teacher: true }
     });
 
     if (!request) throw new NotFoundException('Request not found');
@@ -47,6 +55,16 @@ export class ApprovalsService {
       throw new ForbiddenException('You do not have permission to approve this request');
     }
 
+    const principalProfile = await this.prisma.principal.findFirst({
+      where: { users_id: currentUser.id }
+    });
+    if (!principalProfile) {
+      throw new ForbiddenException('User must have a principal profile to approve or reject requests.');
+    }
+
+    const targetUserId = request.student?.users_id || request.teacher?.users_id;
+    if (!targetUserId) throw new BadRequestException('Request does not link to a valid student or teacher.');
+
     // Apply the changes
     await this.prisma.$transaction(async (prisma) => {
       // Mark as approved
@@ -54,7 +72,7 @@ export class ApprovalsService {
         where: { id },
         data: {
           status: 'APPROVED',
-          reviewedById: currentUser.id
+          principalId: principalProfile.id
         }
       });
 
@@ -65,21 +83,20 @@ export class ApprovalsService {
         if (request.requestedPhoneNo) updateData.phoneNo = request.requestedPhoneNo;
 
         await prisma.users.update({
-          where: { id: request.userId },
+          where: { id: targetUserId },
           data: updateData
         });
       }
 
       // Update teacher profile for qualifications if present
       if (request.requestedQualification || request.requestedSpecilization) {
-        const teacher = await prisma.teachers.findFirst({ where: { users_id: request.userId } });
-        if (teacher) {
+        if (request.teacherId) {
           const updateData: any = {};
           if (request.requestedQualification) updateData.qualification = request.requestedQualification;
           if (request.requestedSpecilization) updateData.specilization = request.requestedSpecilization;
 
           await prisma.teachers.update({
-            where: { id: teacher.id },
+            where: { id: request.teacherId },
             data: updateData
           });
         }
@@ -91,7 +108,8 @@ export class ApprovalsService {
 
   async rejectRequest(id: string, currentUser: AuthenticatedUser) {
     const request = await this.prisma.profileChangeRequest.findUnique({
-      where: { id }
+      where: { id },
+      include: { student: true, teacher: true }
     });
 
     if (!request) throw new NotFoundException('Request not found');
@@ -102,19 +120,29 @@ export class ApprovalsService {
       throw new ForbiddenException('You do not have permission to reject this request');
     }
 
+    const principalProfile = await this.prisma.principal.findFirst({
+      where: { users_id: currentUser.id }
+    });
+    if (!principalProfile) {
+      throw new ForbiddenException('User must have a principal profile to approve or reject requests.');
+    }
+
+    const targetUserId = request.student?.users_id || request.teacher?.users_id;
+    if (!targetUserId) throw new BadRequestException('Request does not link to a valid student or teacher.');
+
     await this.prisma.$transaction(async (prisma) => {
       // Mark as rejected
       await prisma.profileChangeRequest.update({
         where: { id },
         data: {
           status: 'REJECTED',
-          reviewedById: currentUser.id
+          principalId: principalProfile.id
         }
       });
 
       // If it was a first-time phone entry, the user's current phone in DB might be the rejected phone
       // To strictly follow the plan, if the user's phone equals requested phone, wipe it out
-      const user = await prisma.users.findUnique({ where: { id: request.userId } });
+      const user = await prisma.users.findUnique({ where: { id: targetUserId } });
       if (user && user.phoneNo === request.requestedPhoneNo) {
         await prisma.users.update({
           where: { id: user.id },
@@ -130,13 +158,21 @@ export class ApprovalsService {
     if (!currentUser.School_id) {
       throw new ForbiddenException('User must belong to a school.');
     }
+
+    const clerk = await this.prisma.clerks.findFirst({
+      where: { users_id: currentUser.id }
+    });
+    if (!clerk) {
+      throw new ForbiddenException('User must have a clerk profile to create an approval task.');
+    }
+
     return this.prisma.approvalTask.create({
       data: {
         module: dto.module,
         action: dto.action,
         payload: dto.payload,
         schoolId: currentUser.School_id,
-        createdBy: currentUser.id,
+        clerkId: clerk.id,
       },
     });
   }
@@ -151,7 +187,11 @@ export class ApprovalsService {
         status: 'PENDING',
       },
       include: {
-        creator: { select: { id: true, name: true, role: true, email: true } },
+        clerk: {
+          include: {
+            users: { select: { id: true, name: true, role: true, email: true } }
+          }
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -178,12 +218,19 @@ export class ApprovalsService {
       throw new ForbiddenException('You do not have permission to approve/reject this task.');
     }
 
+    const principalProfile = await this.prisma.principal.findFirst({
+      where: { users_id: currentUser.id }
+    });
+    if (!principalProfile) {
+      throw new ForbiddenException('User must have a principal profile to approve or reject tasks.');
+    }
+
     if (status === 'REJECTED') {
       return this.prisma.approvalTask.update({
         where: { id },
         data: {
           status: 'REJECTED',
-          approvedBy: currentUser.id,
+          principalId: principalProfile.id,
         },
       });
     }
@@ -197,7 +244,7 @@ export class ApprovalsService {
         where: { id },
         data: {
           status: 'APPROVED',
-          approvedBy: currentUser.id,
+          principalId: principalProfile.id,
         },
       });
 
