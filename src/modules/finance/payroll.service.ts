@@ -58,7 +58,17 @@ export class PayrollService {
     const staffWithStructure = await this.prisma.users.findMany({
       where: {
         School_id: schoolId,
-        role: { in: [UserRole.TEACHER, UserRole.STAFF, UserRole.PRINCIPAL, UserRole.MANAGEMENT, UserRole.ADMIN] },
+        role: { in: [
+          UserRole.TEACHER,
+          UserRole.CLERK,
+          UserRole.BURSAR,
+          UserRole.LIBRARIAN,
+          UserRole.ACADEMIC_COORDINATOR,
+          UserRole.TRANSPORT_MANAGER,
+          UserRole.PRINCIPAL,
+          UserRole.MANAGEMENT,
+          UserRole.ADMIN
+        ] },
         salaryStructure: { isNot: null }
       },
       include: { salaryStructure: true }

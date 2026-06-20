@@ -32,7 +32,7 @@ export class FeesController {
   }
 
   @Patch('bills/:id/pay')
-  @Roles(UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.STAFF, UserRole.BURSAR)
+  @Roles(UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.CLERK, UserRole.BURSAR)
   markPaid(@Param('id') id: string, @Body() body: { amount: number }, @Request() req: AuthenticatedRequest) {
     return this.feesService.markAsPaid(id, body.amount, req.user);
   }

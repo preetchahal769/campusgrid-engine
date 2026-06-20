@@ -148,4 +148,32 @@ export class SectionsService {
       }))
     };
   }
+
+  async delete(id: string, currentUser: AuthenticatedUser) {
+    const section = await this.prisma.section.findUnique({
+      where: { id },
+      include: { grade: true }
+    });
+    if (!section) throw new NotFoundException('Section not found.');
+
+    if (currentUser.role !== UserRole.SUPER_ADMIN && section.grade.School_id !== currentUser.School_id) {
+      throw new ForbiddenException('You can only delete sections in your own school.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Auto-unassign students in this section
+      await tx.students.updateMany({
+        where: {
+          section_id: id
+        },
+        data: {
+          section_id: null
+        }
+      });
+
+      return tx.section.delete({
+        where: { id },
+      });
+    });
+  }
 }

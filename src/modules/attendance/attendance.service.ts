@@ -409,7 +409,7 @@ export class AttendanceService {
         select: { section_id: true }
       });
       if (studentProfile) {
-        userSectionId = studentProfile.section_id;
+        userSectionId = studentProfile.section_id || undefined;
       }
     }
 

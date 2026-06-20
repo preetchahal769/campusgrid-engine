@@ -63,7 +63,17 @@ export class AttendanceController {
   }
 
   @Post('me')
-  @Roles(UserRole.TEACHER, UserRole.STAFF, UserRole.PRINCIPAL, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(
+    UserRole.TEACHER,
+    UserRole.CLERK,
+    UserRole.BURSAR,
+    UserRole.LIBRARIAN,
+    UserRole.ACADEMIC_COORDINATOR,
+    UserRole.TRANSPORT_MANAGER,
+    UserRole.PRINCIPAL,
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN
+  )
   markSelfAttendance(@Body() body: { status: AttendanceStatus }, @Request() req: AuthenticatedRequest) {
     return this.attendanceService.markSelfAttendance(req.user, body.status);
   }

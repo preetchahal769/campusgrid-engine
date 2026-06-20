@@ -64,14 +64,15 @@ export class LeavesService {
     } 
     // 2. Class Incharge authorized ONLY IF leave is not escalated
     else if (currentUser.role === UserRole.TEACHER && leave.status !== LeaveStatus.ESCALATED) {
-      // Check if this teacher is the class incharge for this student's section
-      const section = await this.prisma.section.findFirst({
-        where: { 
-          id: leave.student.section_id,
-          classIncharge: { users_id: currentUser.id }
-        }
-      });
-      if (section) authorized = true;
+      if (leave.student.section_id) {
+        const section = await this.prisma.section.findFirst({
+          where: { 
+            id: leave.student.section_id,
+            classIncharge: { users_id: currentUser.id }
+          }
+        });
+        if (section) authorized = true;
+      }
     }
 
     if (!authorized) {
