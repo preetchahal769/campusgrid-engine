@@ -235,29 +235,6 @@ export class AttendanceService {
       },
     });
 
-    // Dummy data generation if database is empty to aid demonstration and testing
-    if (records.length === 0 && userIds.length > 0) {
-      const dummyRecords: any[] = [];
-      for (const user of usersList) {
-        const current = new Date(startDate);
-        while (current <= endDate) {
-          const day = current.getDay();
-          if (day !== 0) {
-            const rand = Math.random();
-            const status = rand < 0.85 ? AttendanceStatus.PRESENT : rand < 0.95 ? AttendanceStatus.ABSENT : AttendanceStatus.LEAVE;
-            dummyRecords.push({
-              id: 'dummy-' + user.id + '-' + current.getTime(),
-              users_id: user.id,
-              date: new Date(current),
-              status,
-              School_id: user.School_id || schoolId || 'dummy-school',
-            });
-          }
-          current.setDate(current.getDate() + 1);
-        }
-      }
-      records = dummyRecords as any[];
-    }
 
     const queriedSchoolIds = Array.from(
       new Set(usersList.map(u => u.School_id || schoolId).filter(Boolean))
@@ -368,27 +345,6 @@ export class AttendanceService {
 
     const schoolId = currentUser.School_id;
 
-    // Dummy data generation if no real data is found
-    if (records.length === 0) {
-      const dummyRecords: any[] = [];
-      const current = new Date(startDate);
-      while (current <= endDate) {
-        const day = current.getDay();
-        if (day !== 0) {
-          const rand = Math.random();
-          const status = rand < 0.85 ? AttendanceStatus.PRESENT : rand < 0.95 ? AttendanceStatus.ABSENT : rand < 0.95 ? AttendanceStatus.LEAVE : AttendanceStatus.LEAVE;
-          dummyRecords.push({
-            id: 'dummy-' + current.getTime(),
-            users_id: currentUser.id,
-            date: new Date(current),
-            status,
-            School_id: schoolId || 'dummy-school',
-          });
-        }
-        current.setDate(current.getDate() + 1);
-      }
-      records = dummyRecords as any[];
-    }
 
     const holidays = schoolId
       ? await this.prisma.schoolEvent.findMany({
