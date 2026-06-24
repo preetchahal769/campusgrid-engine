@@ -34,7 +34,7 @@ import { RouteModule } from './modules/route/route.module';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { join } from 'path';
-import { GqlHttpExceptionFilter } from './common/filters/gql-exception.filter';
+import { GqlErrorStatusPlugin } from './common/plugins/gql-error-status.plugin';
 
 @Module({
   imports: [
@@ -93,10 +93,6 @@ import { GqlHttpExceptionFilter } from './common/filters/gql-exception.filter';
       provide: APP_FILTER,
       useClass: SentryGlobalFilter,
     },
-    {
-      provide: APP_FILTER,
-      useClass: GqlHttpExceptionFilter,
-    },
     AppService,
     {
       provide: APP_INTERCEPTOR,
@@ -114,6 +110,7 @@ import { GqlHttpExceptionFilter } from './common/filters/gql-exception.filter';
       provide: APP_GUARD,
       useClass: RolesGuard,
     },
+    GqlErrorStatusPlugin,
   ],
 })
 export class AppModule {}
