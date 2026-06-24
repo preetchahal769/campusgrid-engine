@@ -4,6 +4,7 @@ import { CreateBroadcastDto, TargetType } from './dto/create-broadcast.dto';
 import { UserRole } from '@prisma/client';
 import { StorageService } from '../storage/storage.service';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
+import { getOrLoadStudentProfile } from '../../common/utils/profile-loader';
 
 @Injectable()
 export class BroadcastsService {
@@ -83,10 +84,7 @@ export class BroadcastsService {
     ];
 
     if (currentUser.role === UserRole.STUDENT) {
-      const studentProfile = await this.prisma.students.findFirst({
-        where: { users_id: currentUser.id },
-        include: { section: true }
-      });
+      const studentProfile = await getOrLoadStudentProfile(this.prisma, currentUser);
       
       if (studentProfile) {
         orConditions.push({ targetrole: `SECTION:${studentProfile.section_id}` });

@@ -6,6 +6,7 @@ import { UserRole } from '@prisma/client';
 import { StorageService } from '../storage/storage.service';
 import { MessagesService } from '../communications/messages.service';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
+import { getOrLoadStudentProfile } from '../../common/utils/profile-loader';
 
 @Injectable()
 export class AssignmentsService {
@@ -101,9 +102,7 @@ export class AssignmentsService {
     let assignments: any[] = [];
 
     if (currentUser.role === UserRole.STUDENT) {
-      const studentProfile = await this.prisma.students.findFirst({
-        where: { users_id: currentUser.id, status: 'ACTIVE' }
-      });
+      const studentProfile = await getOrLoadStudentProfile(this.prisma, currentUser);
 
       if (!studentProfile || !studentProfile.section_id) return [];
 

@@ -3,6 +3,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { UserRole, AttendanceStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
+import { getOrLoadStudentProfile } from '../../common/utils/profile-loader';
 
 @Injectable()
 export class AttendanceService {
@@ -360,10 +361,7 @@ export class AttendanceService {
 
     let userSectionId: string | undefined = undefined;
     if (currentUser.role === UserRole.STUDENT) {
-      const studentProfile = await this.prisma.students.findFirst({
-        where: { users_id: currentUser.id },
-        select: { section_id: true }
-      });
+      const studentProfile = await getOrLoadStudentProfile(this.prisma, currentUser);
       if (studentProfile) {
         userSectionId = studentProfile.section_id || undefined;
       }

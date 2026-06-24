@@ -7,9 +7,13 @@ import { AuthenticatedUser } from '../../common/interfaces/authenticated-request
 
 @Injectable()
 export class TimetableService {
+  private timetableCache = new Map<string, { data: any; expiry: number }>();
+  private readonly CACHE_TTL_MS = 60 * 1000; // 1 minute Cache TTL
+
   constructor(private prisma: PrismaService) {}
 
   async createBulk(dto: CreateBulkTimetableDto, currentUser: AuthenticatedUser) {
+    this.timetableCache.clear();
     const results: any[] = [];
     
     // We run this in a transaction so if one slot fails (conflict), nothing is saved
@@ -44,7 +48,12 @@ export class TimetableService {
   }
 
   async fetchForSection(sectionId: string) {
-    return this.prisma.timetable.findMany({
+    const cached = this.timetableCache.get(sectionId);
+    if (cached && cached.expiry > Date.now()) {
+      return cached.data;
+    }
+
+    const data = await this.prisma.timetable.findMany({
       where: {
         teachersubjectsection: {
           section_id: sectionId
@@ -64,6 +73,13 @@ export class TimetableService {
         { lectureNo: 'asc' }
       ]
     });
+
+    this.timetableCache.set(sectionId, {
+      data,
+      expiry: Date.now() + this.CACHE_TTL_MS
+    });
+
+    return data;
   }
 
   async fetchForTeacher(teacherId: string) {

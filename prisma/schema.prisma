@@ -222,6 +222,7 @@ model students {
 
   @@index([School_id])
   @@index([section_id])
+  @@index([users_id])
 }
 
 model studioRoomBooking {
@@ -335,6 +336,7 @@ model timetable {
   deletedAt                DateTime?
 
   @@unique([dayOfWeek, lectureNo, teachersubjectsection_id])
+  @@index([teachersubjectsection_id])
 }
 
 model StudioRoomSwapRequest {

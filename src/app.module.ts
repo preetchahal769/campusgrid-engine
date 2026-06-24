@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './database/prisma.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { GqlThrottlerGuard } from './common/guards/gql-throttler.guard';
 import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import { LastActiveInterceptor } from './common/interceptors/last-active.interceptor';
 
@@ -30,11 +31,22 @@ import { SentryModule, SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { LibraryModule } from './modules/library/library.module';
 import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { RouteModule } from './modules/route/route.module';
+import { GraphQLModule } from '@nestjs/graphql';
+import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
+import { join } from 'path';
+import { GqlHttpExceptionFilter } from './common/filters/gql-exception.filter';
 
 @Module({
   imports: [
     SentryModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
+    GraphQLModule.forRoot<ApolloDriverConfig>({
+      driver: ApolloDriver,
+      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      playground: true,
+      introspection: true,
+      context: ({ req }) => ({ req }),
+    }),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       {
@@ -81,6 +93,10 @@ import { RouteModule } from './modules/route/route.module';
       provide: APP_FILTER,
       useClass: SentryGlobalFilter,
     },
+    {
+      provide: APP_FILTER,
+      useClass: GqlHttpExceptionFilter,
+    },
     AppService,
     {
       provide: APP_INTERCEPTOR,
@@ -88,7 +104,7 @@ import { RouteModule } from './modules/route/route.module';
     },
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: GqlThrottlerGuard,
     },
     {
       provide: APP_GUARD,

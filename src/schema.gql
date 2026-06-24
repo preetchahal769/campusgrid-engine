@@ -1,0 +1,163 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type UserType {
+  id: ID
+  name: String!
+  email: String
+  phoneNo: String
+  role: String
+  globalRating: Float
+  globalRank: Int
+}
+
+type GradeType {
+  id: ID!
+  name: String!
+}
+
+type SectionType {
+  id: ID!
+  name: String!
+  grade_id: String
+  grade: GradeType
+}
+
+type StudentProfileType {
+  id: ID!
+  admissionNumber: String
+  rollNumber: String
+  dateOfBirth: String
+  bloodGroup: String
+  fatherName: String
+  motherName: String
+  emergencyContact: String
+  rankingPoints: Int
+  users_id: String!
+  School_id: String!
+  section_id: String
+  discountPercentage: Float!
+  monthlyFee: Float
+  status: String!
+  enrolledAt: DateTime!
+  transferredAt: DateTime
+  deletedAt: DateTime
+  student_home_location: String
+  assigned_stop_location: String
+  stop_name: String
+  route_status: String
+  users: UserType!
+  section: SectionType
+  todayAttendance: String!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type SubjectType {
+  id: ID
+  name: String
+  code: String
+}
+
+type TeacherType {
+  id: ID
+  users: UserType
+}
+
+type SubmissionType {
+  id: ID!
+  status: String!
+  submittedAt: DateTime
+  obtainedMarks: Float
+  fileUrl: String
+}
+
+type AssignmentType {
+  id: ID!
+  title: String!
+  description: String
+  dueDate: DateTime
+  maxMarks: Float
+  isDraft: Boolean
+  subject: SubjectType
+  teachers: TeacherType
+  submission: SubmissionType
+  isSubmitted: Boolean
+}
+
+type StudioRoomType {
+  roomName: String
+}
+
+type TeacherSubjectSectionType {
+  id: ID
+  subject: SubjectType
+  teachers: TeacherType
+}
+
+type TimetableType {
+  id: ID!
+  dayOfWeek: String!
+  startTime: String
+  endTime: String
+  lectureNo: Int!
+  room: String
+  studioRoom: StudioRoomType
+  teachersubjectsection: TeacherSubjectSectionType
+}
+
+type AttendanceRecordType {
+  date: String!
+  status: String!
+  title: String
+}
+
+type AttendanceStatsType {
+  present: Int!
+  absent: Int!
+  leave: Int!
+  holiday: Int!
+  unmarked: Int!
+  percentage: Int!
+}
+
+type AttendanceResponseType {
+  startDate: String!
+  endDate: String!
+  days: [AttendanceRecordType!]!
+  stats: AttendanceStatsType!
+}
+
+type AttachmentType {
+  id: ID!
+  filename: String!
+  filetype: String!
+  fileurl: String!
+}
+
+type AuthorType {
+  name: String!
+  role: String
+}
+
+type BroadcastType {
+  id: ID!
+  title: String!
+  message: String!
+  targetrole: String!
+  createdAt: String
+  attachments: [AttachmentType!]
+  author: AuthorType
+}
+
+type Query {
+  studentProfile: StudentProfileType!
+  studentHomework: [AssignmentType!]!
+  studentTimetable(sectionId: String): [TimetableType!]!
+  studentAttendance(range: String, month: Int, year: Int): AttendanceResponseType!
+  studentBroadcasts: [BroadcastType!]!
+}
