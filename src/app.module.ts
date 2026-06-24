@@ -42,7 +42,9 @@ import { GqlErrorStatusPlugin } from './common/plugins/gql-error-status.plugin';
     ConfigModule.forRoot({ isGlobal: true }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      autoSchemaFile: process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging'
+        ? true
+        : join(process.cwd(), 'src/schema.gql'),
       playground: true,
       introspection: true,
       context: ({ req }) => ({ req }),
