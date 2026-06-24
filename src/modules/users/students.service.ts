@@ -1,5 +1,6 @@
 import { Injectable, ForbiddenException, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { getOrLoadStudentProfile } from '../../common/utils/profile-loader';
 import { CreateStudentProfileDto } from './dto/create-student-profile.dto';
 import { UpdateStudentProfileDto } from './dto/update-student-profile.dto';
 import { BulkUpdateSectionDto } from './dto/bulk-update-section.dto';
@@ -103,35 +104,13 @@ export class StudentsService {
   }
 
   async findMyProfile(currentUser: AuthenticatedUser) {
-    const profile = await this.prisma.students.findFirst({
-      where: { users_id: currentUser.id, status: 'ACTIVE' },
-      include: {
-        users: { select: { name: true, email: true, phoneNo: true, globalRating: true, globalRank: true } },
-        section: {
-          include: { grade: true }
-        }
-      }
-    });
+    const profile = await getOrLoadStudentProfile(this.prisma, currentUser);
 
     if (!profile) {
       throw new NotFoundException('Active student profile not found.');
     }
 
-    // Fetch today's attendance status
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const todayAttendance = await this.prisma.attendance.findFirst({
-      where: {
-        users_id: currentUser.id,
-        date: today
-      }
-    });
-
-    return {
-      ...profile,
-      todayAttendance: todayAttendance?.status || 'NOT_MARKED'
-    };
+    return profile;
   }
 
   async updateProfile(id: string, updateDto: UpdateStudentProfileDto, currentUser: AuthenticatedUser) {

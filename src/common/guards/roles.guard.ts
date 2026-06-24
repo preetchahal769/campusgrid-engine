@@ -1,6 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
+import { GqlExecutionContext } from '@nestjs/graphql';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -17,7 +18,10 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const { user } = context.switchToHttp().getRequest();
+    const ctx = GqlExecutionContext.create(context);
+    const req = ctx.getContext().req || context.switchToHttp().getRequest();
+    const user = req?.user;
+
     // Assuming `user` object attached by JWT strategy has a `role` property
     if (!user || !user.role) {
        return false;

@@ -26,6 +26,7 @@ import { CalendarService } from './calendar.service';
     SubstitutionsService,
     ExamsService,
     CalendarService
-  ]
+  ],
+  exports: [AssignmentsService, TimetableService]
 })
 export class AcademicsModule {}
