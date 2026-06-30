@@ -512,4 +512,84 @@ export class AssignmentsService {
     if (percentage >= 33) return 'E';
     return 'F';
   }
+
+  async generatePresignedUrl(
+    currentUser: AuthenticatedUser,
+    assignmentId: string,
+    filename: string,
+    filetype: string,
+  ) {
+    if (currentUser.role !== UserRole.STUDENT) {
+      throw new ForbiddenException('Only students can generate upload presigned URLs.');
+    }
+
+    const studentProfile = await getOrLoadStudentProfile(this.prisma, currentUser);
+    if (!studentProfile) {
+      throw new ForbiddenException('Student profile not found.');
+    }
+
+    const timestamp = Date.now();
+    const cleanFilename = filename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const key = `uploads/${currentUser.School_id}/${studentProfile.id}/${assignmentId}/${timestamp}_${cleanFilename}`;
+
+    const uploadUrl = await this.storageService.getUploadPresignedUrl(key, filetype);
+
+    return {
+      uploadUrl,
+      fileUrl: key,
+    };
+  }
+
+  async submitHomework(
+    currentUser: AuthenticatedUser,
+    assignmentId: string,
+    fileUrl: string,
+    notes?: string,
+  ) {
+    if (currentUser.role !== UserRole.STUDENT) {
+      throw new ForbiddenException('Only students can submit homework.');
+    }
+
+    const studentProfile = await getOrLoadStudentProfile(this.prisma, currentUser);
+    if (!studentProfile) {
+      throw new ForbiddenException('Student profile not found.');
+    }
+
+    const assignment = await this.prisma.assignment.findUnique({
+      where: { id: assignmentId }
+    });
+    if (!assignment || assignment.isDraft) {
+      throw new NotFoundException('Assignment not found.');
+    }
+
+    const existingSubmission = await this.prisma.submission.findFirst({
+      where: {
+        assignment_id: assignmentId,
+        students_id: studentProfile.id,
+      }
+    });
+
+    if (existingSubmission) {
+      return this.prisma.submission.update({
+        where: { id: existingSubmission.id },
+        data: {
+          fileUrl,
+          content: notes || null,
+          status: 'SUBMITTED',
+          submittedAt: new Date(),
+        }
+      });
+    }
+
+    return this.prisma.submission.create({
+      data: {
+        assignment_id: assignmentId,
+        students_id: studentProfile.id,
+        fileUrl,
+        content: notes || null,
+        status: 'SUBMITTED',
+        submittedAt: new Date(),
+      }
+    });
+  }
 }

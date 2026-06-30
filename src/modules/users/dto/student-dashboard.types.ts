@@ -338,3 +338,91 @@ export class BroadcastType {
   @Field(() => AuthorType, { nullable: true })
   author?: AuthorType;
 }
+
+@ObjectType()
+export class PresignedUrlResponse {
+  @Field()
+  uploadUrl: string;
+
+  @Field()
+  fileUrl: string;
+}
+
+@ObjectType()
+export class StudentFeeBillType {
+  @Field(() => ID)
+  id: string;
+
+  @Field()
+  studentId: string;
+
+  @Field()
+  month: string;
+
+  @Field(() => Float)
+  amountDue: number;
+
+  @Field(() => Float)
+  amountPaid: number;
+
+  @Field()
+  status: string;
+
+  @Field({ nullable: true })
+  dueDate?: Date;
+
+  @Field({ nullable: true })
+  paidAt?: Date;
+
+  @Field()
+  createdAt: Date;
+}
+
+@ObjectType()
+export class SubjectScoreType {
+  @Field()
+  subjectName: string;
+
+  @Field(() => Float)
+  score: number;
+
+  @Field()
+  color: string;
+}
+
+@ObjectType()
+export class PerformanceExamResultType {
+  @Field()
+  title: string;
+
+  @Field()
+  date: string;
+
+  @Field()
+  score: string;
+
+  @Field()
+  grade: string;
+
+  @Field()
+  variant: string;
+}
+
+@ObjectType()
+export class StudentPerformanceType {
+  @Field(() => Float)
+  gpa: number;
+
+  @Field()
+  rank: string;
+
+  @Field()
+  sectionName: string;
+
+  @Field(() => [SubjectScoreType])
+  subjects: SubjectScoreType[];
+
+  @Field(() => [PerformanceExamResultType])
+  examResults: PerformanceExamResultType[];
+}
+

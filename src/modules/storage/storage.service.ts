@@ -38,6 +38,16 @@ export class StorageService {
     return getSignedUrl(this.s3Client, command, { expiresIn: expiresSeconds });
   }
 
+  async getUploadPresignedUrl(key: string, contentType: string, expiresSeconds: number = 300): Promise<string> {
+    const command = new PutObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      ContentType: contentType,
+    });
+
+    return getSignedUrl(this.s3Client, command, { expiresIn: expiresSeconds });
+  }
+
   async uploadFile(key: string, file: Buffer, contentType: string): Promise<string> {
     const command = new PutObjectCommand({
       Bucket: this.bucketName,

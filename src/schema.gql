@@ -154,10 +154,56 @@ type BroadcastType {
   author: AuthorType
 }
 
+type PresignedUrlResponse {
+  uploadUrl: String!
+  fileUrl: String!
+}
+
+type StudentFeeBillType {
+  id: ID!
+  studentId: String!
+  month: String!
+  amountDue: Float!
+  amountPaid: Float!
+  status: String!
+  dueDate: DateTime
+  paidAt: DateTime
+  createdAt: DateTime!
+}
+
+type SubjectScoreType {
+  subjectName: String!
+  score: Float!
+  color: String!
+}
+
+type PerformanceExamResultType {
+  title: String!
+  date: String!
+  score: String!
+  grade: String!
+  variant: String!
+}
+
+type StudentPerformanceType {
+  gpa: Float!
+  rank: String!
+  sectionName: String!
+  subjects: [SubjectScoreType!]!
+  examResults: [PerformanceExamResultType!]!
+}
+
 type Query {
   studentProfile: StudentProfileType!
   studentHomework: [AssignmentType!]!
   studentTimetable(sectionId: String): [TimetableType!]!
   studentAttendance(range: String, month: Int, year: Int): AttendanceResponseType!
   studentBroadcasts: [BroadcastType!]!
+  studentFees: [StudentFeeBillType!]!
+  studentPerformance: StudentPerformanceType!
+}
+
+type Mutation {
+  getUploadPresignedUrl(filename: String!, filetype: String!, assignmentId: String!): PresignedUrlResponse!
+  submitHomework(assignmentId: String!, fileUrl: String!, notes: String): SubmissionType!
 }

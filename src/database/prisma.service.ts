@@ -7,7 +7,14 @@ import { Pool } from 'pg';
 export class PrismaService extends PrismaClient implements OnModuleInit {
   constructor() {
     super({
-      adapter: new PrismaPg(new Pool({ connectionString: process.env.DATABASE_URL }))
+      adapter: new PrismaPg(
+        new Pool({
+          connectionString: process.env.DATABASE_URL,
+          max: 30, // Optimized connection pool limits for Hostinger KVM memory overhead
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 2000,
+        })
+      )
     });
   }
 
