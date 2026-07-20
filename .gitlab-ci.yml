@@ -1,0 +1,190 @@
+# ─────────────────────────────────────────────────────────────────
+# CampusGrid Engine — GitLab CI/CD Pipeline
+# ─────────────────────────────────────────────────────────────────
+# Triggers on every push to main.
+# Staging deploys automatically. Production requires manual approval.
+# Backend secrets (DATABASE_URL, JWT_SECRET, REDIS_URL, FIREBASE_*)
+# are NEVER in this pipeline — they live only in .env files on each server.
+#
+# Required CI/CD Variables (Settings → CI/CD → Variables):
+#   STAGING_HOST       — Staging server IP/hostname
+#   STAGING_USER       — SSH username for staging
+#   STAGING_SSH_KEY    — SSH private key (Type: File)
+#   PROD_HOST          — Production server IP/hostname
+#   PROD_USER          — SSH username for production
+#   PROD_SSH_KEY       — SSH private key (Type: File)
+# ─────────────────────────────────────────────────────────────────
+
+stages:
+  - lint
+  - build
+  - deploy-staging
+  - approve
+  - build-production
+  - deploy-production
+
+variables:
+  DOCKER_TLS_CERTDIR: "/certs"
+
+# ─────────────────────────────────────────────────────────────────
+# STAGE: lint — Lint + unit tests on all pushes + merge requests
+# ─────────────────────────────────────────────────────────────────
+lint:
+  stage: lint
+  image: node:20-alpine
+  before_script:
+    - apk add --no-cache libc6-compat openssl
+    - npm ci
+    - npx prisma generate
+  script:
+    - npm run lint
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+test:
+  stage: lint
+  image: node:20-alpine
+  before_script:
+    - apk add --no-cache libc6-compat openssl
+    - npm ci
+    - npx prisma generate
+  script:
+    - npm run test
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+# ─────────────────────────────────────────────────────────────────
+# STAGE: build — Build testing image (smoke test — never pushed)
+# ─────────────────────────────────────────────────────────────────
+build-testing:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build --target testing-env -t testing:latest .
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# ─────────────────────────────────────────────────────────────────
+# STAGE: build — Build & push staging image
+# Tagged as :staging-{short-sha} — every deploy is commit-traceable.
+# No build-args needed — all secrets live on the server in .env.staging
+# ─────────────────────────────────────────────────────────────────
+build-staging:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  needs: ["build-testing"]
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - IMAGE_TAG="staging-${CI_COMMIT_SHORT_SHA}"
+    - |
+      docker build \
+        --target staging-env \
+        -t $CI_REGISTRY_IMAGE:$IMAGE_TAG \
+        .
+    - docker push $CI_REGISTRY_IMAGE:$IMAGE_TAG
+    - echo "IMAGE_TAG=$IMAGE_TAG" >> build.env
+    - echo "FULL_IMAGE=$CI_REGISTRY_IMAGE:$IMAGE_TAG" >> build.env
+  artifacts:
+    reports:
+      dotenv: build.env
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# ─────────────────────────────────────────────────────────────────
+# STAGE: deploy-staging — SSH deploy to staging server
+# Pulls the new image and restarts only the backend service.
+# Entrypoint automatically runs prisma migrate deploy on start.
+# ─────────────────────────────────────────────────────────────────
+deploy-staging:
+  stage: deploy-staging
+  image: alpine:latest
+  needs: ["build-staging"]
+  before_script:
+    - apk add --no-cache openssh-client
+    - chmod 600 "$STAGING_SSH_KEY"
+  script:
+    - |
+      ssh -i "$STAGING_SSH_KEY" -o StrictHostKeyChecking=no "$STAGING_USER@$STAGING_HOST" \
+        "cd /opt/campusgrid && \
+         docker system prune -a -f --volumes 2>/dev/null || true && \
+         docker pull $FULL_IMAGE && \
+         echo 'BACKEND_TAG=$IMAGE_TAG' > /opt/campusgrid/.backend-tag && \
+         BACKEND_TAG=$IMAGE_TAG docker compose up -d --no-deps --force-recreate backend && \
+         docker system prune -f && \
+         echo '✅ Staging engine deployed: $IMAGE_TAG'"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# ─────────────────────────────────────────────────────────────────
+# STAGE: approve — Manual approval gate
+# Pipeline pauses here. Go to CI/CD → Pipelines → Click ▶ Play.
+# ─────────────────────────────────────────────────────────────────
+approve-production:
+  stage: approve
+  image: alpine:latest
+  needs: ["deploy-staging"]
+  script:
+    - echo "Production deployment approved for commit $CI_COMMIT_SHA"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+      allow_failure: false
+
+# ─────────────────────────────────────────────────────────────────
+# STAGE: build-production — Build & push production image
+# Built from the exact same commit SHA as staging.
+# Tagged as :prod-{short-sha}.
+# ─────────────────────────────────────────────────────────────────
+build-production:
+  stage: build-production
+  image: docker:latest
+  services:
+    - docker:dind
+  needs: ["approve-production"]
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - IMAGE_TAG="prod-${CI_COMMIT_SHORT_SHA}"
+    - |
+      docker build \
+        --target production-env \
+        -t $CI_REGISTRY_IMAGE:$IMAGE_TAG \
+        .
+    - docker push $CI_REGISTRY_IMAGE:$IMAGE_TAG
+    - echo "IMAGE_TAG=$IMAGE_TAG" >> build.env
+    - echo "FULL_IMAGE=$CI_REGISTRY_IMAGE:$IMAGE_TAG" >> build.env
+  artifacts:
+    reports:
+      dotenv: build.env
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# ─────────────────────────────────────────────────────────────────
+# STAGE: deploy-production — SSH deploy to production server
+# Uses a separate SSH key from staging (PROD_SSH_KEY).
+# Entrypoint auto-runs prisma migrate deploy on start.
+# ─────────────────────────────────────────────────────────────────
+deploy-production:
+  stage: deploy-production
+  image: alpine:latest
+  needs: ["build-production"]
+  before_script:
+    - apk add --no-cache openssh-client
+    - chmod 600 "$PROD_SSH_KEY"
+  script:
+    - |
+      ssh -i "$PROD_SSH_KEY" -o StrictHostKeyChecking=no "$PROD_USER@$PROD_HOST" \
+        "cd /opt/campusgrid && \
+         docker system prune -a -f --volumes 2>/dev/null || true && \
+         docker pull $FULL_IMAGE && \
+         echo 'BACKEND_TAG=$IMAGE_TAG' > /opt/campusgrid/.backend-tag && \
+         BACKEND_TAG=$IMAGE_TAG docker compose up -d --no-deps --force-recreate backend && \
+         docker system prune -f && \
+         echo '✅ Production engine deployed: $IMAGE_TAG'"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
